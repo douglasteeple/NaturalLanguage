@@ -1083,10 +1083,14 @@ parse :-
     headtail(Input, Root, Punctuation),
    ( Root == [q] -> halt;
        ( % if
+             get_time(T1),
              %s_type(Punctuation, S_type), write(S_type), write(': '), writeln(Root),
              sentence(Logical_form, Parse_form, Root, []),
              write('Logical Form: '),writeln(Logical_form),
              writeln('Parse Form: '),pp(Parse_form,1),nl,
+             get_time(T2),
+             Mseconds is (T2 - T1) * 1000,
+             write(Mseconds),writeln('msec'),
              parse;
          % else
             write("Pardon?"),nl,parse
