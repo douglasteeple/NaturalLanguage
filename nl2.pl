@@ -139,59 +139,65 @@ iv(lives,X,live(X)).
 % independent clauses are sentences
 
 % where is question?
-sentence(lf, question(Phrase)) -->
+sentence(LF, question(Phrase)) -->
     relative_pronoun(rpron(P), Number, Person, Case),
     sense_verb_phrase(VPhr, Number,Person),
     direct_object(Object, Number, Person),
     {Phrase=..[P,VPhr,Object]}.
 
 % is X a Y?
-sentence(lf, question(is_(VPhr,Object))) -->
+sentence(LF, question(is(VPhr,Object1,Object2))) -->
     sense_verb_phrase(VPhr, Number,Person),
-    direct_object(Object, Number, Person).
+    direct_object(Object1, Number, Person),
+    indirect_object(Object2, Number, Person).
 
 % imperative
-sentence(lf, imperative(VPhr, NPhr)) -->
-    verb_phrase(VPhr,Number,Person,Type),{writeln(VPhr)},
-    direct_object(Object, Number, Person),{writeln(VPhr)}.
+sentence(LF, imperative(VPhr, Object)) -->
+    verb_phrase(VPhr,singular,first,intransitive),
+    direct_object(Object, Number, Person).
  
-% statement
-sentence(lf, statement(Sent)) -->
-    independent_clause(Sent).
+sentence(LF, imperative(VPhr, Object, Object2)) -->
+    verb_phrase(VPhr,singular,first,transitive),
+    direct_object(Object, Number, Person),
+    indirect_object(Object2, Number, Person).
 
-% if/then statements are sentences
-sentence(lf, implies(Sentl, Sent2)) -->
+% statement
+sentence(LF, statement(Sent)) -->
+    independent_clause(LF, Sent).
+
+% if/then statements
+sentence(if(LF1,LF2), implies(Sentl, Sent2)) -->
     [if],
-    independent_clause(Sentl),
+    independent_clause(LF1, Sentl),
     [then],
-    independent_clause(Sent2).
+    independent_clause(LF2, Sent2).
  
-sentence(lf, implies(Sentl, Sent2)) -->
+sentence(if(LF1,LF2), implies(Sentl, Sent2)) -->
     [if],
-    independent_clause(Sentl),
-    independent_clause(Sent2).
+    independent_clause(LF1, Sentl),
+    independent_clause(LF2, Sent2).
  
 % ------------------------------------------------------------------------------------------------
 % canonical independent clause
 % ------------------------------------------------------------------------------------------------
  
-independent_clause(indcls(Subj, VPhr)) -->
+independent_clause(LF, clause(Subj, VPhr)) -->
     subject(Subj, Number, Person),
     predicate(VPhr, Number, Person).
  
 % adverb prefix to a sentence
  
-independent_clause(indcls(Subj, pred(mods(rtshift(Advphr)), VPhr))) -->
+independent_clause(LF, clause(Subj, pred(mods(rtshift(Advphr)), VPhr))) -->
     adverb_phrase(Advphr),
     subject(Subj, Number, Person),
     predicate(VPhr, Number, Person).
  
 % independent_clauses using expletive "There" as empty subject ["There are apples"]
  
-independent_clause(exists(NPhr)) --> [there, is],
+independent_clause(exist(NPhr), exist(NPhr)) --> [there, is],
     subject(NPhr, singular, Person).
 
-independent_clause(exists(NPhr)) --> [there, are],
+independent_clause(exist(NPhr), exist(NPhr)) --> [there, are],
     subject(NPhr, plural, Person).
  
 % ------------------------------------------------------------------
@@ -729,6 +735,7 @@ averb(break, broke, breaks, breaking, broken, transitive).
 averb(lose, lost, loses, losing, lost, transitive).
 averb(continue, continued, continues, continuing, continued, transitive). 
 averb(let, let, lets, letting, let, transitive).
+averb(run, ran, runs, running, ran, intransitive).
 averb(fill, filled, fills, filling, filled, transitive).
     %averb(V,Num,Root,transitive) :- morphit(V,List,Out), check_list(v,List,Out,Num,Root).
     %averb(V,Num,Root,intransitive) :- morphit(V,List,Out), check_list(v,List,Out,Num,Root).
@@ -1041,6 +1048,7 @@ trim_period([X|R],[X|T]) :- trim_period(R,T).
 nspaces(N) :- N > 0, write(' '), N1 is N - 1, nspaces(N1).
 nspaces(_).
 
+pp(X,0) :- writeln(X).
 pp(X,NN) :- functor(X, F, N), !, nspaces(NN), writeln(F), NN1 is NN + 1, nspaces(NN1), ppa(X,1,N,NN1).
 pp(X,NN) :- nspaces(NN), writeln(X).
 ppa(X,N,T,NN) :- N =< T, !, nspaces(NN), arg(N,X,A), pp(A,NN), N1 is N + 1, NN1 is NN + 1, ppa(X,N1,T,NN1).
@@ -1074,13 +1082,14 @@ parse :-
     input_to_atom_list(Input),
     headtail(Input, Root, Punctuation),
    ( Root == [q] -> halt;
-       (
-         s_type(Punctuation, S_type), write(S_type), write(': '), writeln(Root),
-         sentence(Logical_form, Parse_form, Root, []),
-         write('Logical Form: '),writeln(Logical_form),
-         writeln('Parse Form: '),pp(Parse_form,0),nl,
-         parse;
-         write("Pardon?"),nl,parse
+       ( % if
+             %s_type(Punctuation, S_type), write(S_type), write(': '), writeln(Root),
+             sentence(Logical_form, Parse_form, Root, []),
+             write('Logical Form: '),writeln(Logical_form),
+             writeln('Parse Form: '),pp(Parse_form,1),nl,
+             parse;
+         % else
+            write("Pardon?"),nl,parse
         )
      ).
 
