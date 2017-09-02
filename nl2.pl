@@ -13,6 +13,7 @@
 
 :- op(100,xfy,'&').
 :- op(150,xfx,'=>').
+
 :- set_prolog_flag(history, 50).
 :- ensure_loaded('wn_s_convert.pl').
 :- ensure_loaded( 'pronto_morph_engine.pl' ).
@@ -51,77 +52,123 @@ n(man,X,man(X)).
 n(woman,X,woman(X)).
 nm(john).
 nm(mary).
+dt(a,PI,P2,ex(Pl,P2)).
+dt(all,PI,P2,all(Pl,P2)).
+tv(loves,X,Y,love(X,Y)).
+iv(lives,X,live(X)).
  
 MLGRAM:
  
- sent ==> np(X): vp(X).
- np(X) ==> det: noun(X): relclause(X).
- np(X) ==> name(X).
- vp(X) ==> transverb(X,Y): np(Y). 
- vp(X) ==> intransverb(X).
- relclause(X) ==> +that: vp(X). 
- relclause(*) ==> nil.
- det ==> +D: $dt(D,P1,P2,P): P2/P1-P.
- noun(X) ==> +N: $n(N,X,P): l-P.
- name(X) ==> +X: $nm(X).
- transverb(X,Y) ==> +V: $tv(V,X,Y,P): l-P.
- intransverb(X) ==> +V: $iv(V,X,P): l-P.
- 
-analyze2(Sent) <-
-    sentence(Syn,Sent,nil) &
-    synsem(Syn,Sems,nil) & 
-    semant(top:nil,Sems,sem(*,*,LF):nil,niI) &
+ sent --> np(X), vp(X).
+ np(X) --> det, noun(X), relclause(X).
+ np(X) --> name(X).
+ vp(X) --> transverb(X,Y), np(Y).
+ vp(X) --> intransverb(X).
+ relclause(X) --> [that], vp(X).
+ relclause(*) --> [].
+ det --> [D], {dt(D,P1,P2,P)}, P2/P1-P.
+noun(X) --> [N], {n(N,X,P)}, l-P.
+name(X) --> [X], {nm(X)}.
+transverb(X,Y) --> [V], {tv(V,X,Y,P)}, l-P.
+intransverb(X) --> [V], {iv(V,X,P)}, l-P.
+*/
+
+:- op(100,xfx,':').
+:- op(100,xfx,'-').
+:- op(200,xf,'@').
+
+analyze2(Sent) :-
+    sentence(Syn,Sent,[]),
+    synsem(Syn,Sems,[]),
+    semant([top],Sems,[sem(_,_,LF)|[]],[]),
     outlogform(LF).
  
-synsem(syn(Feas,Mods),Sems2,Sems3) <- 
-    synsemlist(Mods,Sems) & 
-    reorder(Sems,Semsl) & 
-    modlist(Semsl,sem(Feas,id,t),Sem,Sems2,Sem:Sems3).
+synsem(syn(Feas,Mods),Sems2,Sems3) :-
+    synsemlist(Mods,Sems), 
+    reorder(Sems,Semsl), 
+    modlist(Semsl,sem(Feas,id,t),Sem,Sems2,[Sem|Sems3]).
  
-synsemlist(syn(Feas,Mods0):Mods,Sems1) <- /&
-    synsem(syn(Feas,Mods0),Sems1,Sems2) &
+synsemlist([syn(Feas,Mods0)|Mods],Sems1) :- !,
+    synsem(syn(Feas,Mods0),Sems1,Sems2),
     synsemlist(Mods,Sems2).
-synsemlist((Op-LF):Mods, sem(terminal:nil,Op,LF):Sems) <- /&
-    synsemlist(Mods,Sems). 
-synsemlist(Nod:Mods,Sems) <-
-    synsemlist(Mods,Sems). 
+
+synsemlist([(Op-LF)|Mods], [sem(terminal,Op,LF)|Sems]) :- !,
+    synsemlist(Mods,Sems).
+
+synsemlist(Mod:Mods,Sems) :-
+    synsemlist(Mods,Sems).
+
 synsemlist(nil,nil).
  
-reorder(A:L,H) <-
-    reorder(L,Ll) & insert(A,L1,M).
+reorder(A:L,H) :-
+    reorder(L,Ll), insert(A,L1,M).
 reorder(nil,nil).
  
  
-insert(A,B:L,B:Ll) <-
-    prec(A,PA) & prec(B,PB) & gt(PB,PA) &/&
-    insert(A,L,Li). insert(A,L,A:L).
+insert(A,[B|L],[B|Ll]) :-
+    prec(A,PA), prec(B,PB), gt(PB,PA),!,
+    insert(A,L,Li).
+insert(A,L,[A|L]).
 
-prec(sem(terminal:*,*,*),2) <- /.
-prec(sem(relc!ause:*,*,*),l) <- /.
+prec(sem([terminal|_]),2) :- !.
+prec(sem([relclause|_]),l) :- !.
 prec(e,3).
  
-mod(id-*, Sem, Sem) <- /.
-mod(Sem, id-*, Sem) <- /.
-mod(l-P, Op-Q, Op-R) <- and(P,Q,R). mod(P/Q-R, Op-Q, @P-R).
+mod(id-_, Sem, Sem) :- !.
+mod(Sem, id-_, Sem) :- !.
+mod(l-P, Op-Q, Op-R) :- and(P,Q,R).
+mod(P/Q-R, Op-Q, @P-R).
 mod(@P-Q, Op-P, Op-Q).
- 
-*/
+
+/* Lexicon */
+n(man,X,man(X)).
+n(woman,X,woman(X)).
+nm(john).
+nm(mary).
+dt(a,PI,P2,ex(Pl,P2)).
+dt(all,PI,P2,all(Pl,P2)).
+tv(loves,X,Y,love(X,Y)).
+iv(lives,X,live(X)).
+
 
 /* Gurney: */
- 
+
 % ------------------------------------------------------------------------------------------------
 % Sentences and Independent Clauses
 % ------------------------------------------------------------------------------------------------
 % independent clauses are sentences
+
+% where is question?
+sentence(lf, question(Phrase)) -->
+    relative_pronoun(rpron(P), Number, Person, Case),
+    sense_verb_phrase(VPhr, Number,Person),
+    direct_object(Object, Number, Person),
+    {Phrase=..[P,VPhr,Object]}.
+
+% is X a Y?
+sentence(lf, question(is_(VPhr,Object))) -->
+    sense_verb_phrase(VPhr, Number,Person),
+    direct_object(Object, Number, Person).
+
+% imperative
+sentence(lf, imperative(VPhr, NPhr)) -->
+    verb_phrase(VPhr,Number,Person,Type),{writeln(VPhr)},
+    direct_object(Object, Number, Person),{writeln(VPhr)}.
  
-sentence(s(Sent)) -->
+% statement
+sentence(lf, statement(Sent)) -->
     independent_clause(Sent).
- 
+
 % if/then statements are sentences
-sentence(implies(Sentl, Sent2)) --> [if], independent_clause(Sentl),
-    [then], independent_clause(Sent2).
+sentence(lf, implies(Sentl, Sent2)) -->
+    [if],
+    independent_clause(Sentl),
+    [then],
+    independent_clause(Sent2).
  
-sentence(implies(Sentl, Sent2)) --> [if], independent_clause(Sentl),
+sentence(lf, implies(Sentl, Sent2)) -->
+    [if],
+    independent_clause(Sentl),
     independent_clause(Sent2).
  
 % ------------------------------------------------------------------------------------------------
@@ -197,6 +244,7 @@ subject(subj(IVP), singular, third) -->
  % an intransitive verb cannot have a direct object 
  predicate_2(VPhr, Number, Person) -->
     verb_phrase(VPhr, Number, Person, intransitive).
+
  predicate_2(Pred3, Number, Person) --> 
     predicate_3(Pred3, Number, Person).
  
@@ -258,11 +306,12 @@ inf_verb_phrase(infvp(InfPhr, vcomp(Advs))) -->
 inf_verb_phrase(infvp(InfPhr)) --> 
     inf_verb_phrase_2(InfPhr).
 
-%-------------------------------------------------------------
+%-------------------------------------------------------------------
 % adverbial phrases
 % ------------------------------------------------------------------ 
-adverbs(Advp) --> adverbphrase(Advp).
+adverbs(Advp) --> adverb_phrase(Advp).
 adverbs(advs(Advp,Preps)) --> adverb_phrase(Advp), prepositions(Props).
+
 adverb_phrase(advp(head(Adv))) --> adverb(Adv).
 adverb_phrase(advp(SubAdvCls)) --> subord_adv_clause(SubAdvCls).
 adverb_phrase(advp(mod(Adv), Advph)) --> adverb(Adv), adverb_phrase(Advph).
@@ -342,7 +391,14 @@ gerund_phrase(gerp(Gerp2,Advphr)) -->
 % noun phrases
 % ------------------------------------------------------------------
 % a proper noun is a noun phrase
-noun_phrase(np(head(name(Proper))), singular, third, Case) --> [Proper], {proper_noun(Proper)}.
+
+proper_noun_phrase(Proper) --> proper_noun_phrase2(Proper1), proper_noun_phrase(Proper2), {atomic_list_concat([Proper1, Proper2], ' ', Proper)}.
+proper_noun_phrase(Proper) --> proper_noun_phrase2(Proper).
+
+proper_noun_phrase2(Proper) --> [Proper], {proper_noun(Proper)}.
+
+% a proper noun is a noun phrase
+noun_phrase(np(head(name(Proper))), singular, third, Case) --> proper_noun_phrase(Proper).
 
 % infinitive verb phrase is a noun phrase
 noun_phrase(np(head(InfPhr)), singular, third, Case) --> inf_verb_phrase(InfPhr).
@@ -737,22 +793,14 @@ is_adverb(easy).
 is_adverb(slowly).
 is_adverb(here).
 is_adverb(gone).
-    is_adverb(A) :- morphit(A,List,Out), check_list(r,List,Out,Num,Root). % s(A,_,_,r,_,_).
-    is_adverb(A) :- morphit(A,List,Out), check_list(s,List,Out,Num,Root). % s(A,_,_,s,_,_).
+    %is_adverb(A) :- morphit(A,List,Out), check_list(r,List,Out,Num,Root). % s(A,_,_,r,_,_).
+    %is_adverb(A) :- morphit(A,List,Out), check_list(s,List,Out,Num,Root). % s(A,_,_,s,_,_).
  
 % ---------------------------------------------------------------
 % proper nouns 
 % ---------------------------------------------------------------
-proper_noun(mary).
-proper_noun(zeno).
-proper_noun(john).
-proper_noun(socrates).
-proper_noun(english).
-proper_noun(athens).
-proper_noun(route).
-proper_noun(times_square).
-    proper_noun(Name) :- atom(Name), atom_codes(Name, Codes2), head(Codes2, First), char_type(First,upper), !.
- 
+proper_noun(Name) :- atom(Name), atom_codes(Name, Codes2), head(Codes2, First), char_type(First,upper), !.
+
 % ---------------------------------------------------------------
 % nouns
 % ---------------------------------------------------------------
@@ -841,6 +889,8 @@ is_common_noun(hour, singular).
 is_common_noun(hours, plural).
 is_common_noun(minute, singular).
 is_common_noun(minutes, plural).
+is_common_noun(mortal, _).
+is_common_noun(mortals, plural).
     is_common_noun(N,Num) :- morphit(N,List,Out), check_list(n,List,Out,Num,Root).
 
 
@@ -933,7 +983,7 @@ is_subconj(where).
 
 % ---------------------------------------------------------------------
     
-morphit(X,List,Out) :- morph_atoms_bag(X, List), morph_bag_lookup(List, Out),!.
+morphit(X,List,Out) :- morph_atoms_bag(X, List), morph_bag_lookup(List, Out), nonvar(Out),!.
     
 check_list(_,[],[],_,_) :- fail.
 check_list(PartOfSpeech,[[A]],[B],Num,R) :- check_it(PartOfSpeech,A,B,Num,R).
@@ -967,10 +1017,10 @@ is_terminal_punc(.).
 is_terminal_punc(?).
 is_terminal_punc(!).
 
-s_type([.],statement).
-s_type([?],question).
-s_type([!],imperative).
-s_type(X,X).
+s_type([.],statement) :-!.
+s_type([?],question) :-!.
+s_type([!],imperative) :-!.
+s_type(X,X) :-!.
 
 split_atom(S, A, L) :- atomic_list_concat(XL, S, A), delete(XL, '', L).
 
@@ -1026,9 +1076,8 @@ parse :-
    ( Root == [q] -> halt;
        (
          s_type(Punctuation, S_type), write(S_type), write(': '), writeln(Root),
-         sentence(Parse_form,Root,[]),
-         %sentence(Logical_form, Parse_form, Root, []),
-         %write('Logical Form: '),writeln(Logical_form),
+         sentence(Logical_form, Parse_form, Root, []),
+         write('Logical Form: '),writeln(Logical_form),
          writeln('Parse Form: '),pp(Parse_form,0),nl,
          parse;
          write("Pardon?"),nl,parse
