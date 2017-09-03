@@ -1,82 +1,23 @@
 #! /Applications/SWI-Prolog.app/Contents/MacOS/swipl
 
 /*
- * Adapted from Gurney
- */
-
-/* 
-    Infix operators  and their argument precedence
-    x represents an argument whose precedence is strictly lower than that
-    of the operator. y represents an argument whose precedence is lower
-    or equal than that of the operator. 
+ * Adapted from Gurney et al.
  */
 
 :- op(100,xfy,'&').
-:- op(150,xfx,'=>').
-
-:- set_prolog_flag(history, 50).
-:- ensure_loaded('wn_s_convert.pl').
-:- ensure_loaded( 'pronto_morph_engine.pl' ).
-:- ensure_loaded( 'morph_lookup.pl' ).
-
-/*
- WINOGRAD:
-S -> NP,VP
-NP -> Determiner, NP
-NP-> Noun
-NP -> Adjective, NP
-NP-> NP,PP
-VP-> Verb
-VP -> Verb, NP
-VP-> VP,PP
-PP -> Preposition, NP
-*/
-
-/*
-McCord MODL:
- 
-sent(P) --> np(X,PI,P): vp(X,Pl). 
-np(X,P1,P) --> det(P2,P1,P): noun(X,P3): relclause(X,P3,P2).
-np(X,P,P) --> name(X).
-vp(X,P) --> transverb(X,Y,Pl): np(Y,Pl,P). 
-vp(X,P) --> intransverb(X,P). 
-relclause(X,Pl,Pl&P2) --> +that: vp(X,P2).
-relclause(*,P,P) --> nil.
-det(PI,P2,P) --> +D: $dt(D,PI,P2,P).
-noun(X,P) --> +N: SnfN,X,P).
-name(X) --> +X: $nm(X). 
-transverb(X,Y,P) --> +V: $tv(V,X,Y,P). 
-intransverb(X,P) --> +V: $iv(V,X,P).
-/ * Lexicon * /
-n(man,X,man(X)).
-n(woman,X,woman(X)).
-nm(john).
-nm(mary).
-dt(a,PI,P2,ex(Pl,P2)).
-dt(all,PI,P2,all(Pl,P2)).
-tv(loves,X,Y,love(X,Y)).
-iv(lives,X,live(X)).
- 
-MLGRAM:
- 
- sent --> np(X), vp(X).
- np(X) --> det, noun(X), relclause(X).
- np(X) --> name(X).
- vp(X) --> transverb(X,Y), np(Y).
- vp(X) --> intransverb(X).
- relclause(X) --> [that], vp(X).
- relclause(*) --> [].
- det --> [D], {dt(D,P1,P2,P)}, P2/P1-P.
-noun(X) --> [N], {n(N,X,P)}, l-P.
-name(X) --> [X], {nm(X)}.
-transverb(X,Y) --> [V], {tv(V,X,Y,P)}, l-P.
-intransverb(X) --> [V], {iv(V,X,P)}, l-P.
-*/
-
-:- op(100,xfx,':').
+:- op(150,xfx,'==>').
 :- op(100,xfx,'-').
 :- op(200,xf,'@').
 
+:- set_prolog_flag(history, 50).
+
+/* the WORDNET lexicon and morphology */
+:- ensure_loaded('wn_s_convert.pl').
+:- ensure_loaded('pronto_morph_engine.pl').
+:- ensure_loaded('morph_lookup.pl').
+:- ensure_loaded('wn_g.pl').
+
+/* McCord */
 analyze2(Sent) :-
     sentence(Syn,Sent,[]),
     synsem(Syn,Sems,[]),
@@ -98,12 +39,11 @@ synsemlist([(Op-LF)|Mods], [sem(terminal,Op,LF)|Sems]) :- !,
 synsemlist(Mod:Mods,Sems) :-
     synsemlist(Mods,Sems).
 
-synsemlist(nil,nil).
+synsemlist([],[]).
  
-reorder(A:L,H) :-
-    reorder(L,Ll), insert(A,L1,M).
-reorder(nil,nil).
- 
+reorder([A|L],H) :-
+    reorder(L,Ll), insert(A,L1,H).
+reorder([],[]).
  
 insert(A,[B|L],[B|Ll]) :-
     prec(A,PA), prec(B,PB), gt(PB,PA),!,
@@ -130,49 +70,55 @@ dt(all,PI,P2,all(Pl,P2)).
 tv(loves,X,Y,love(X,Y)).
 iv(lives,X,live(X)).
 
-
-/* Gurney: */
+/* McCord end */
 
 % ------------------------------------------------------------------------------------------------
 % Sentences and Independent Clauses
 % ------------------------------------------------------------------------------------------------
 % independent clauses are sentences
 
-% where is question?
-sentence(LF, question(Phrase)) -->
-    relative_pronoun(rpron(P), Number, Person, Case),
-    sense_verb_phrase(VPhr, Number,Person),
-    direct_object(Object, Number, Person),
-    {Phrase=..[P,VPhr,Object]}.
+% where/what/.. question
+sentence(question(LF), question(Phrase)) -->
+    relative_pronoun(Y, Prop1, rpron(P), Number, Person, Case),{write(Y),writeln(Prop1)},
+    sense_verb_phrase(X, Prop2, VPhr, Number, Person),{write(X),writeln(Prop2)},
+    direct_object(X, Y, Prop3, Object, Number, Person),{write(X),write(Y),writeln(Prop2)},
+    {LF=(Prop1&(Y=Prop2)), Phrase=..[P,VPhr,Object]}.
 
 % is X a Y?
-sentence(LF, question(is(VPhr,Object1,Object2))) -->
-    sense_verb_phrase(VPhr, Number,Person),
-    direct_object(Object1, Number, Person),
-    indirect_object(Object2, Number, Person).
+sentence(question(Assn2), question(is(VPhr,Object1,Object2))) -->
+    sense_verb_phrase(X, Assn, VPhr, Number, Person),
+    direct_object(Y, Assn, Assn1, Object1, Number, Person),
+    indirect_object(Y, Assn1, Assn2, Object2, Number, Person).
+
+% does X Y?
+sentence(question(LF), question(does(VPhr,Object,Object2))) -->
+    does_verb_phrase(A, Assn, VPhr1, Number, Person),
+    direct_object(X, Assn1, Assn2, Object, Number1, Person1),
+    verb_phrase((X,Y), Assn2, VPhr, Number, Person, transitive),
+    indirect_object(Y, Assn2, LF, Object2, Number1, Person1).
 
 % imperative
-sentence(LF, imperative(VPhr, Object)) -->
-    verb_phrase(VPhr,singular,first,intransitive),
-    direct_object(Object, Number, Person).
+sentence(imperative(LF), imperative(VPhr, Object)) -->
+    verb_phrase(X, Assn, VPhr, singular, first, intransitive),
+    direct_object(Y, Assn, LF, Object, Number, Person).
  
-sentence(LF, imperative(VPhr, Object, Object2)) -->
-    verb_phrase(VPhr,singular,first,transitive),
-    direct_object(Object, Number, Person),
-    indirect_object(Object2, Number, Person).
+sentence(imperative(LF), imperative(VPhr, Object, Object2)) -->
+    verb_phrase((X,Y,Z), Assn, VPhr, singular, first, bitransitive),
+    direct_object(X, Assn, Assn1, Object, Number, Person),
+    indirect_object(Y, Assn1, LF, Object2, Number, Person).
 
 % statement
-sentence(LF, statement(Sent)) -->
+sentence(statement(LF), statement(Sent)) -->
     independent_clause(LF, Sent).
 
 % if/then statements
-sentence(if(LF1,LF2), implies(Sentl, Sent2)) -->
+sentence(statement(LF2:-LF1), conditional(Sentl, Sent2)) -->
     [if],
     independent_clause(LF1, Sentl),
     [then],
     independent_clause(LF2, Sent2).
  
-sentence(if(LF1,LF2), implies(Sentl, Sent2)) -->
+sentence(statement(LF2:-LF1), conditional(Sentl, Sent2)) -->
     [if],
     independent_clause(LF1, Sentl),
     independent_clause(LF2, Sent2).
@@ -182,483 +128,489 @@ sentence(if(LF1,LF2), implies(Sentl, Sent2)) -->
 % ------------------------------------------------------------------------------------------------
  
 independent_clause(LF, clause(Subj, VPhr)) -->
-    subject(Subj, Number, Person),
-    predicate(VPhr, Number, Person).
+    subject(X, Assn, LF, Subj, Number, Person),
+    predicate(X, Assn, VPhr, Number, Person).
  
 % adverb prefix to a sentence
  
-independent_clause(LF, clause(Subj, pred(mods(rtshift(Advphr)), VPhr))) -->
-    adverb_phrase(Advphr),
-    subject(Subj, Number, Person),
-    predicate(VPhr, Number, Person).
+independent_clause(Assn1&Assn2, clause(Subj, pred(mods(rtshift(Advphr)), VPhr))) -->
+    adverb_phrase(X, Assn, Advphr),
+    subject(X, Assn, Assn1, Subj, Number, Person),
+    predicate(X, Assn2, VPhr, Number, Person).
  
 % independent_clauses using expletive "There" as empty subject ["There are apples"]
  
-independent_clause(exist(NPhr), exist(NPhr)) --> [there, is],
-    subject(NPhr, singular, Person).
+independent_clause(LF, exist(NPhr)) --> [there, is],
+    subject(X, Assn, LF, NPhr, singular, Person).
 
-independent_clause(exist(NPhr), exist(NPhr)) --> [there, are],
-    subject(NPhr, plural, Person).
+independent_clause(LF, exist(NPhr)) --> [there, are],
+    subject(X, Assn, LF, NPhr, plural, Person).
  
 % ------------------------------------------------------------------
 % subject of a sentence
 % ------------------------------------------------------------------ 
 % nominative case noun phrase is a subject
-subject(subj(NPhr), Number, Person) -->
-    noun_phrase(NPhr, Number, Person, nominative).
+subject(X, Assn, LF, subj(NPhr), Number, Person) -->
+    noun_phrase(X,Assn,LF, NPhr, Number, Person, nominative).
  
 % an infinitive verb phrase: "to run" is a subject 
-subject(subj(IVP), singular, third) -->
-    inf_verb_phrase(IVP).
+subject(X, Assn, LF, subj(IVP), singular, third) -->
+    inf_verb_phrase(X,Assn,IVP).
  
  %------------------------------------------------------------------
  % other noun type parts
  %------------------------------------------------------------------
  % a nominative case noun phrase is a predicate nominative
- pred_nominative(pdnom(NPhr), Number, Person) -->
-    noun_phrase(NPhr, Number, Person, nominative).
+pred_nominative(X, Assn, LF, dnom(NPhr), Number, Person) -->
+    noun_phrase(X, Assn, LF, NPhr, Number, Person, nominative).
  
  % any adjective phrase is a predicate adjective
- pred_adjective(pdadj(Adj)) --> 
-    adjective_phrase(Adj).
+ pred_adjective(X, Assn, pdadj(Adj)) -->
+    adjective_phrase(X, Assn, Adj).
  
- direct_object(do(NPhr), Number, Person) --> 
-    noun_phrase(NPhr, Number, Person, objective).
+ direct_object(X, Assn, LF, do(NPhr), Number, Person) -->
+    noun_phrase(X, Assn, LF, NPhr, Number, Person, objective).
  
- indirect_object(io(NPhr), Number, Person) --> 
-    noun_phrase(NPhr, Number, Person, objective).
+ indirect_object(X, Assn, LF, io(NPhr), Number, Person) -->
+    noun_phrase(X, Assn, LF,NPhr, Number, Person, objective).
  
  % ------------------------------------------------------------------ 
  % predicates
  % ------------------------------------------------------------------
  
- predicate(pred(Pred2), Number, Person) -->
-    predicate_2(Pred2, Number, Person).
+ predicate(X, Assn, pred(Pred2), Number, Person) -->
+    predicate_2(X, Assn, Pred2, Number, Person).
  
  % verb phrase, prepositions
  % example: [I nibbled the carrot in the garden.]
- predicate(pred(Pred2, vcomp(Advs)), Number, Person) -->
-    predicate_2(Pred2, Number, Person),
-    adverbs(Advs).
+ predicate(X, Assn&Assn1, pred(Pred2, vcomp(Advs)), Number, Person) -->
+    predicate_2(X, Assn, Pred2, Number, Person),
+    adverbs(X, Assn1, Advs).
  
  % sense-verb -\- prepositional phrase
  % example: [I am in the garden.]
- predicate(pred(VPhr, padv(Advphr)), Number, Person) --> 
-    sense_verb_phrase(VPhr, Number,Person), 
-    adverb_phrase(Advphr).
+ predicate(X, Assn&Assn1, pred(VPhr, padv(Advphr)), Number, Person) -->
+    sense_verb_phrase(X, Assn, VPhr, Number,Person),
+    adverb_phrase(X, Assn1, Advphr).
  
  % an intransitive verb cannot have a direct object 
- predicate_2(VPhr, Number, Person) -->
-    verb_phrase(VPhr, Number, Person, intransitive).
+predicate_2(X, Assn, VPhr, Number, Person) -->
+    verb_phrase(X, Assn, VPhr, Number, Person, intransitive).
 
- predicate_2(Pred3, Number, Person) --> 
-    predicate_3(Pred3, Number, Person).
+ predicate_2(X, Assn, Pred3, Number, Person) -->
+    predicate_3(X, Assn, Pred3, Number, Person).
  
  % sense verb -\-predicate nominative 
  % example: [I am a rabbit.]
- predicate_2(pred(VPhr, pnom(PredNom)), Number, Person) --> 
-    sense_verb_phrase(VPhr, Number, Person), 
-    pred_nominative(PredNom, Number, Person_2).
- 
+ predicate_2(X, Assn, pred(VPhr, pnom(PredNom)), Number, Person) -->
+    sense_verb_phrase(X, Assn1, VPhr, Number, Person),
+    pred_nominative(Y, Assn2, Assn, PredNom, Number, Person), {X=Y}.
+
 % sense verb -\- predicate adjective
 % example: [I am angry.]
-predicate_2(pred(VPhr, padj(Adj)), Number, Person) --> 
-    sense_verb_phrase(VPhr, Number, Person),
-    pred_adjective(Adj).
+predicate_2(X, Assn1&Assn2, pred(VPhr, padj(Adj)), Number, Person) -->
+    sense_verb_phrase(X, Assn1, VPhr, Number, Person),
+    pred_adjective(X, Assn2, Adj).
 
 % verb -\- direct object
-predicate_3(*(VPhr, DirObj), Number, Person) -->
-    verb_phrase(VPhr, Number, Person, transitive),
-    direct_object(DirObj, Number2, Person2).
+predicate_3(X, LF, *(VPhr, DirObj), Number, Person) -->
+    verb_phrase((X,Y), Assn, VPhr, Number1, Person1, transitive),
+    direct_object(Y, Assn, LF, DirObj, Number2, Person2).
 
 % verb -\- indirect object -\- direct object
-predicate_3(*(VPhr, IndObj, DirObj), Number, Person) --> 
-    verb_phrase(VPhr, Number, Person, bitransitive),
-    indirect_object(IndObj, Number2, Person2),
-    direct_object(DirObj, Number3, Person3).
+predicate_3(X, LF, *(VPhr, IndObj, DirObj), Number, Person) -->
+    verb_phrase((X,Y,Z), Assn1, VPhr, Number, Person, bitransitive),
+    indirect_object(Y, Assn1, Assn2, IndObj, Number2, Person2),
+    direct_object(Z, Assn2, LF, DirObj, Number3, Person3).
  
 %--------------------------------------------------------
 % The Subordinate Adverb Clause
 %--------------------------------------------------------
-subord_adv_clause(sadvcls(Subconj, IndCls)) --> 
-    subordconj(Subconj),
-    independent_clause(IndCls).
+subord_adv_clause(Prop1, LF1&LF2, sadvcls(Subconj, IndCls)) -->
+    subordconj(Prop1, LF1, Subconj),
+    independent_clause(LF2,IndCls).
 
 %--------------------------------------------------------
 % Infinitives
 %--------------------------------------------------------
 % intransitive verbs cannot have objects
-inf_verb_phrase_2(*(to, head(V))) --> 
+inf_verb_phrase_2(X, Assn, *(to, head(V))) -->
     [to], [V],
-    {averb(V,Past, SingThrd, PresPart, Part, intransitive)}.
+    {averb(X, Assn, V, Past, SingThrd, PresPart, Part, intransitive)}.
  
 % transitive verbs must have objects
-inf_verb_phrase_2(*(to, head(V), NPhr)) --> 
+inf_verb_phrase_2(X, LF, *(to, head(V), NPhr)) -->
     [to], [V],
-    direct_object(NPhr, Number, Person),
-    {averb(V,Past, SingThrd, PresPart, Part, transitive)}.
+    direct_object(Y, Assn, LF, NPhr, Number, Person),
+    {averb((X,Y), Assn, V, Past, SingThrd, PresPart, Part, transitive)}.
  
 % bi-transitive verbs must have indirect and direct objects
-inf_verb_phrase_2(*(to, head(V), IndObj, DirObj)) --> 
+inf_verb_phrase_2(X, Assn, *(to, head(V), IndObj, DirObj)) -->
     [to],
-    indirect_object(IndObj, Number, Person),
-    direct_object(DirObj, Number2, Person2),
-    {averb(V,Past, SingThrd, PresPart, Part, bitransitive)}.
+    indirect_object(Z, Assn, LF1, IndObj, Number, Person),
+    direct_object(Y, Assn, LF2, DirObj, Number2, Person2),
+    {averb((X,Y,Z), Assn, V, Past, SingThrd, PresPart, Part, bitransitive)}.
  
 % infinitive verb phrases may or may not have adverb modifiers
-inf_verb_phrase(infvp(InfPhr, vcomp(Advs))) --> 
-    inf_verb_phrase_2(InfPhr),
-    adverbs(Advs).
-inf_verb_phrase(infvp(InfPhr)) --> 
-    inf_verb_phrase_2(InfPhr).
+inf_verb_phrase(X, Assn, infvp(InfPhr, vcomp(Advs))) -->
+    inf_verb_phrase_2(X, Assn1, InfPhr),
+    adverbs(Assn1, Assn, Advs).
+inf_verb_phrase(X, Assn, infvp(InfPhr)) -->
+    inf_verb_phrase_2(X, Assn, InfPhr).
 
 %-------------------------------------------------------------------
 % adverbial phrases
 % ------------------------------------------------------------------ 
-adverbs(Advp) --> adverb_phrase(Advp).
-adverbs(advs(Advp,Preps)) --> adverb_phrase(Advp), prepositions(Props).
+adverbs(Prop1,LF, Advp) --> adverb_phrase(Prop1,LF, Advp).
+adverbs(Prop1,LF1&LF2, advs(Advp,Preps)) --> adverb_phrase(Prop1,LF1, Advp), prepositions(Prop1,LF2, Props).
 
-adverb_phrase(advp(head(Adv))) --> adverb(Adv).
-adverb_phrase(advp(SubAdvCls)) --> subord_adv_clause(SubAdvCls).
-adverb_phrase(advp(mod(Adv), Advph)) --> adverb(Adv), adverb_phrase(Advph).
-adverb_phrase(advp(PrtPhr)) --> participial_phrase(PrtPhr).
-adverb_phrase(advp(Prep)) --> prepositions(Prep).
+adverb_phrase(Prop1,LF, advp(head(Adv))) --> adverb(Prop1,LF, Adv).
+adverb_phrase(Prop1,LF, advp(SubAdvCls)) --> subord_adv_clause(Prop1,LF, SubAdvCls).
+adverb_phrase(Prop1,LF1&LF2, advp(mod(Adv), Advph)) --> adverb(Prop1,LF1, Adv), adverb_phrase(Prop1,LF2, Advph).
+adverb_phrase(Prop1,LF, advp(PrtPhr)) --> participial_phrase(Prop1,LF, PrtPhr).
+adverb_phrase(Prop1,LF, advp(Prep)) --> prepositions(Prop1,LF, Prep).
  
 %-------------------------------------------------------------------
 % adjective phrases
 % ------------------------------------------------------------------
-adjective_phrase(Adj) --> adjective(Adj).
+adjective_phrase(Prop1,LF, Adj) --> adjective(Prop1,LF, Adj).
  
-adjective_phrase(adjs(Adj, Adjph)) -->
-    adjective(Adj),
-    adjective_phrase(Adjph).
+adjective_phrase(Prop1,LF1&LF2, adjs(Adj, Adjph)) -->
+    adjective(Prop1,LF1, Adj),
+    adjective_phrase(Prop1,LF2, Adjph).
  
 % adverbs can modify adjectives
-adjective_phrase(adjp(Adv, Adj)) --> 
-    adverb(Adv),
-    adjective(Adj).
+adjective_phrase(Prop1,LF1&LF2, adjp(Adv, Adj)) -->
+    adverb(Prop1,LF1, Adv),
+    adjective(Prop1,LF2, Adj).
 % ------------------------------------------------------------------
 % prepositional phrase
 % ------------------------------------------------------------------
-prepositions(preps(Prphr)) --> prepositional_phrase(Prphr).
+prepositions(Prop1,LF, preps(Prphr)) --> prepositional_phrase(Prop1,LF, Prphr).
  
-prepositions(preps(Prphr,Preps)) --> prepositional_phrase(Prphr), prepositions(Preps).
+prepositions(Prop1,LF1&LF2, preps(Prphr,Preps)) --> prepositional_phrase(Prop1,LF1, Prphr), prepositions(Prop1,LF2, Preps).
  
-prepositional_phrase(prepp(head(Prep),(obj(NPhr)))) --> 
-    preposition(Prep), 
-    noun_phrase(NPhr, Number2, Person, objective).
+prepositional_phrase(Prop1,LF, prepp(head(Prep),(obj(NPhr)))) -->
+    preposition(Prop1,Assn, Prep),
+    noun_phrase(X,Assn,LF, NPhr, Number2, Person, objective).
 
 % ------------------------------------------------------------------
 % Participials and Gerunds
 % ------------------------------------------------------------------
-participle(part(past(PartPhr)), Type) --> [PartPhr], {averb(Infinitive, Past, SingThrd, PresPart, PartPhr, Type)}.
-participle(part(pres(PartPhr)), Type) --> [PartPhr], {averb(Infinitive, Past, SingThrd, PartPhr, PastPart, Type)}.
+participle(X,Assn,part(past(PartPhr)), Type) --> [PartPhr], {averb(X,Assn,Infinitive, Past, SingThrd, PresPart, PartPhr, Type)}.
+participle(X,Assn,part(pres(PartPhr)), Type) --> [PartPhr], {averb(X,Assn,Infinitive, Past, SingThrd, PartPhr, PastPart, Type)}.
 
-participial_phrase(partp(PrtPhr, NPhr)) -->
-    participle(PrtPhr, transitive),
-    noun_phrase(NPhr, Number, Person, objective).
+participial_phrase(X,LF,partp(PrtPhr, NPhr)) -->
+    participle(X,Assn,PrtPhr, transitive),
+    noun_phrase(X,Assn,LF,NPhr, Number, Person, objective).
  
-participial_phrase(partp(PrtPhr, AdvPh, NPhr)) --> 
-    participle(PrtPhr, transitive),
-    adverb_phrase(AdvPh),
-    noun_phrase(NPhr, Number, Person, objective).
+participial_phrase(X,LF,partp(PrtPhr, AdvPh, NPhr)) -->
+    participle(X,Assn1,PrtPhr, transitive),
+    adverb_phrase(X,Assn1,AdvPh),
+    noun_phrase(X,Assn1&Assn2,LF,NPhr, Number, Person, objective).
  
-participial_phrase(partp(PrtPhr)) --> 
-    participle(PrtPhr, intransitive).
+participial_phrase(X,Assn,partp(PrtPhr)) -->
+    participle(X,Assn,PrtPhr, intransitive).
  
-participial_phrase(partphr(PrtPhr, Advphr)) --> 
-    participle(PrtPhr, intransitive), 
-    adverb_phrase(Advphr).
+participial_phrase(X,Assn1&Assn2,partphr(PrtPhr, Advphr)) -->
+    participle(X,Assn1,PrtPhr, intransitive),
+    adverb_phrase(X,Assn2,Advphr).
 
 % ------------------------------------------------------------------
 % gerund phrases: verbs in their present participle form
 % treated as noun phrases
 % ------------------------------------------------------------------
-gerund(ger(Phrase), Type) -->
+gerund(X, Assn, ger(Phrase), Type) -->
     [Part], 
-    {averb(Root, Past, SingThrd, Part, PastPart, Type)},
+    {averb(X, Assn, Root, Past, SingThrd, Part, PastPart, Type)},
     Phrase=..[Part,root(Root)].
  
-gerund_phrase_2(gerp(Part, NPhr)) -->
-    gerund(Part, transitive),
-    noun_phrase(NPhr, Number, Person, objective).
+gerund_phrase_2(X, LF, gerp(Part, NPhr)) -->
+    gerund(X, Assn, Part, transitive),
+    noun_phrase(X, Assn, LF, NPhr, Number, Person, objective).
  
-gerund_phrase_2(gerp(Part)) -->
-    gerund(Part, intransitive).
+gerund_phrase_2(X, Assn, gerp(Part)) -->
+    gerund(X, Assn, Part, intransitive).
  
-gerund_phrase(gerp(Part)) -->
-    gerund_phrase_2(Part).
+gerund_phrase(X, Assn, gerp(Part)) -->
+    gerund_phrase_2(X, Assn, Part).
  
-gerund_phrase(gerp(Gerp2,Advphr)) -->
-    gerund_phrase_2(Gerp2),
-    adverb_phrase(Advphr).
+gerund_phrase(X, Assn1&Assn2, gerp(Gerp2,Advphr)) -->
+    gerund_phrase_2(X, Assn1, Gerp2),
+    adverb_phrase(X, Assn2, Advphr).
 
 % ------------------------------------------------------------------
 % noun phrases
 % ------------------------------------------------------------------
+% a list of proper nouns is a noun phrase
+
+proper_noun_phrase(X, Assn, Assn, Proper) --> proper_noun_phrase2(X, Assn, Assn, Proper1), proper_noun_phrase(X, Assn, Assn, Proper2), {atomic_list_concat([Proper1, Proper2], ' ', Proper)}.
+proper_noun_phrase(X, Assn, Assn, Proper) --> proper_noun_phrase2(X, Assn, Assn, Proper).
+
+proper_noun_phrase2(Proper, Assn, Assn, Proper) --> [Proper], {proper_noun(Proper)}.
+
 % a proper noun is a noun phrase
-
-proper_noun_phrase(Proper) --> proper_noun_phrase2(Proper1), proper_noun_phrase(Proper2), {atomic_list_concat([Proper1, Proper2], ' ', Proper)}.
-proper_noun_phrase(Proper) --> proper_noun_phrase2(Proper).
-
-proper_noun_phrase2(Proper) --> [Proper], {proper_noun(Proper)}.
-
-% a proper noun is a noun phrase
-noun_phrase(np(head(name(Proper))), singular, third, Case) --> proper_noun_phrase(Proper).
+noun_phrase(X,Assn,Assn,np(head(name(Proper))), singular, third, Case) --> proper_noun_phrase(X, Assn, Assn, Proper).
 
 % infinitive verb phrase is a noun phrase
-noun_phrase(np(head(InfPhr)), singular, third, Case) --> inf_verb_phrase(InfPhr).
+noun_phrase(X,Assn,Assn,np(head(InfPhr)), singular, third, Case) --> inf_verb_phrase(X,Assn,InfPhr).
  
 % gerunds are noun phrases
-noun_phrase(np(head(GerPhr)),singular, third, Case) --> gerund_phrase(GerPhr).
+noun_phrase(X,Assn,Assn,np(head(GerPhr)),singular, third, Case) --> gerund_phrase(X,Assn,GerPhr).
  
 % noun with determiner in front
-noun_phrase(np(Det, NPhr2), Number, third, Case) -->
-    determiner(Det, Number),
-    noun_phrase_2(NPhr2, Number).
+noun_phrase(X, Assn, LF, np(Det, NPhr2), Number, third, Case) -->
+    determiner(X, Prop, Assn, Prop, Det, Number),
+    noun_phrase_2(X, Prop, LF, NPhr2, Number).
  
 % noun without determiner
-noun_phrase(np(NPhr2), Number, third, Case) -->
-    noun_phrase_2(NPhr2, Number).
+noun_phrase(X, Assn, Assn, np(NPhr2), Number, third, Case) -->
+    noun_phrase_2(X, Assn, LF, NPhr2, Number).
  
 % pronoun is a noun phrase
-noun_phrase(np(head(NPhr)), Number,Person, Case) --> pronoun(NPhr, Number, Person, Case).
+noun_phrase(X,Assn,Assn,np(head(NPhr)), Number,Person, Case) --> pronoun(X,Assn, NPhr, Number, Person, Case).
  
-noun_phrase(np(NPhr1, conj(Conj), NPhr2), plural, Person, Case) -->
-    noun_phrase_2(NPhr1, Number),
+noun_phrase(X,Assn,LF, np(NPhr1, conj(Conj), NPhr2), plural, Person, Case) -->
+    noun_phrase_2(X,Assn,LF1, NPhr1, Number),
     [Conj],
     {conjunction(Conj)}, 
-    noun_phrase_2(NPhr2, Number).
+    noun_phrase_2(X,Assn,LF2, NPhr2, Number),
+    LF=..[Conj,LF1,LF2].
 
 % noun with adjective in front
-noun_phrase_2(*(NPhr2, mods(Adj)), Number) --> 
-    adjective_phrase(Adj),
-    noun_phrase_3(NPhr2, Number). 
+noun_phrase_2(X,Assn,Assn1&Assn2,*(NPhr2, mods(Adj)), Number) -->
+    adjective_phrase(X,Assn1,Adj),
+    noun_phrase_3(X, Assn, Assn2, NPhr2, Number).
  
 % A noun without adjective
-noun_phrase_2(NPhr3, Number) --> noun_phrase_3(NPhr3, Number).
+noun_phrase_2(X,Assn,LF,NPhr3, Number) --> noun_phrase_3(X,Assn,LF,NPhr3, Number).
  
 % A noun with prepositional phrase after
-noun_phrase_3(*(head(N),Pmods), Number) --> 
-    noun(N,Number),
-    noun_complements(Pmods).
+noun_phrase_3(X, Assn, LF1&LF2, *(head(N),Pmods), Number) -->
+    noun(X, LF1, N, Number),
+    noun_complements(X, LF2, Pmods).
  
 % plain noun
-noun_phrase_3(head(N), Number) -->
-    noun(N,Number).
+noun_phrase_3(X, Assn, Assn, head(N), Number) -->
+    noun(X, Assn, N, Number).
  
 %--------------------------------------------------------------------
 % noun post modifiers can be prepositions, subordinate adjectives, etc.
 %--------------------------------------------------------------------
  
-noun_complements(ncomps(Pnphr)) --> noun_complement(Pnphr).
-noun_complements(ncomps(Pnphr,Pnmods)) -->
-    noun_complement(Pnphr), 
-    noun_complements(Pnmods).
-noun_complement(ncomp(Prphr)) --> prepositional_phrase(Prphr).
+noun_complements(X, LF, ncomps(Pnphr)) --> noun_complement(X, LF, Pnphr).
+noun_complements(X, LF1&LF2, ncomps(Pnphr,Pnmods)) -->
+    noun_complement(X, LF1, Pnphr),
+    noun_complements(X, LF2, Pnmods).
+noun_complement(X, LF, ncomp(Prphr)) --> prepositional_phrase(X, LF, Prphr).
 
 %--------------------------------------------------------------------
 % verb phrases with or without auxiliary verbs
  
-verb_phrase(vp(Vphr),Number,Person,Type) --> verb_phrase_2(Vphr,Number,Person,Type).
+verb_phrase(X, LF, vp(Vphr),Number,Person,Type) -->
+    verb_phrase_2(X, LF, Vphr,Number,Person,Type).
 
-verb_phrase(vp(Vphr, mods(Adv)),Number,Person,Type) -->
-    adverb_phrase(Adv),
-    verb_phrase_2(Vphr,Number,Person,Type).
+verb_phrase(X, LF1&LF2, vp(Vphr, mods(Adv)),Number,Person,Type) -->
+    adverb_phrase(X, LF1, Adv),
+    verb_phrase_2(X, LF2, Vphr,Number,Person,Type).
  
 % this predicate tests for third person singular verb forms
 sing_third(singular,third).
  
 % tense: past simple
-verb_phrase_2(head(past(root(Infinitive))), Number, Person, Type) --> 
+verb_phrase_2(X, past(LF), head(past(root(Infinitive))), Number, Person, Type) -->
     [V], 
-    {averb(Infinitive, V, SingThrd, PresPart, PastPart, Type)}.
+    {averb(X, LF, Infinitive, V, SingThrd, PresPart, PastPart, Type)}.
  
 % tense: past perfect
-verb_phrase_2(head(pastperf(root(Infinitive))), Number, Person, Type) --> 
+verb_phrase_2(X, past(LF), head(pastperf(root(Infinitive))), Number, Person, Type) -->
     [had], 
     [V], 
-    {averb(Infinitive, Past, SingThrd, PresPart, V, Type)}.
+    {averb(X, LF, Infinitive, Past, SingThrd, PresPart, V, Type)}.
  
-verb_phrase_2(*(head(pastperf(root(Infinitive))),mods(Adv)), Number, Person, Type) --> 
+verb_phrase_2(X, past(Assn1&Assn2), *(head(pastperf(root(Infinitive))),mods(Adv)), Number, Person, Type) -->
     [had],
-    adverb_phrase(Adv), 
+    adverb_phrase(X, Assn1, Adv),
     [V], 
-    {averb(Infinitive, Past, SingThrd, PresPart, V, Type)}. 
+    {averb(X, Assn2, Infinitive, Past, SingThrd, PresPart, V, Type)}.
  
 % tense: present simple
-verb_phrase_2(head(present(root(Infinitive))), singular, third, Type) --> 
+verb_phrase_2(X, LF, head(present(root(Infinitive))), singular, third, Type) -->
     [V], 
-    {averb(Infinitive, Past, V, PresPart, PastPart, Type)}.
+    {averb(X, LF, Infinitive, Past, V, PresPart, PastPart, Type)}.
  
-verb_phrase_2(head(present(root(V))), Number, Person, Type) --> 
+verb_phrase_2(X, LF, head(present(root(V))), Number, Person, Type) -->
     {not(sing_third(Number,Person))},
     [V], 
-    {averb(V,Past, SingThrd, PresPart, PastPart, Type)}.
+    {averb(X, LF, V, Past, SingThrd, PresPart, PastPart, Type)}.
 
 % tense: future simple
-verb_phrase_2(head(future(root(V))), Number, Person, Type) -->
+verb_phrase_2(X, future(LF), head(future(root(V))), Number, Person, Type) -->
     [will],
     [V], 
-    {averb(V,Past, SingThrd, PresPart, PastPart, Type)}.
+    {averb(X, LF, V, Past, SingThrd, PresPart, PastPart, Type)}.
  
-verb_phrase_2(*(head(future(root(V))), mods(Adv)), Number, Person, Type) -->
+verb_phrase_2(X, future(Assn1&Assn2), *(head(future(root(V))), mods(Adv)), Number, Person, Type) -->
     [will],
-    adverb_phrase(Adv),
+    adverb_phrase(X, Assn1, Adv),
     [V], 
-    {averb(V, Past, SingThrd, ProsPart, PastPart, Type)}.
+    {averb(X, Assn2, V, Past, SingThrd, ProsPart, PastPart, Type)}.
  
 % tense: present perfect
-verb_phrase_2(head(presperf(root(Infinitive))), singular, third, Type) --> 
+verb_phrase_2(X, LF, head(presperf(root(Infinitive))), singular, third, Type) -->
     [has],
     [V], 
-    {averb(Infinitive, Past, SingThrd, PresPart, V, Type)}.
+    {averb(X, LF, Infinitive, Past, SingThrd, PresPart, V, Type)}.
  
-verb_phrase_2(*(head(presperf(root(Infinitive))),mods(Adv)), singular, third, Type) -->
+verb_phrase_2(X, Assn1&Assn2, *(head(presperf(root(Infinitive))),mods(Adv)), singular, third, Type) -->
     [has], 
-    adverb_phrase(Adv),
+    adverb_phrase(X, Assn1, Adv),
     [V],
-    {averb(Infinitive, Past, SingThrd, PresPart, V, Type)}.
+    {averb(X, Assn2, Infinitive, Past, SingThrd, PresPart, V, Type)}.
  
-verb_phrase_2(head(presperf(root(Infinitive))), Number, Person, Type) --> 
+verb_phrase_2(X, LF, head(presperf(root(Infinitive))), Number, Person, Type) -->
     {not(sing_third(Number,Person))},
     [have],
     [V], 
-    {averb(Infinitive, Past, SingThrd, ProsPart, V, Type)}.
+    {averb(X, LF, Infinitive, Past, SingThrd, ProsPart, V, Type)}.
  
-verb_phrase_2(*(Adv,head(presperf(root(Infinitive)))), Number, Person, Type) --> 
+verb_phrase_2(X, LF1&LF2, *(Adv,head(presperf(root(Infinitive)))), Number, Person, Type) -->
     {not(sing_third(Number, Person))},
     [have], 
-    adverb_phrase(Adv),
+    adverb_phrase(X, LF1, Adv),
     [V], 
-    {averb(Infinitive, Past, SingThrd, PresPart, V, Type)}.
+    {averb(X, LF2, Infinitive, Past, SingThrd, PresPart, V, Type)}.
 
 % tense: future perfect
-verb_phrase_2(head(futperf(root(Infinitive))), Number, Person, Type) --> 
+verb_phrase_2(X, future(LF), head(futperf(root(Infinitive))), Number, Person, Type) -->
     [will], [have],
     [V], 
-    {averb(Infinitive, Past, SingThrd, PresPart, V, Type)}.
+    {averb(X, LF, Infinitive, Past, SingThrd, PresPart, V, Type)}.
  
-verb_phrase_2(*(head(futperf(root(Infinitive))),mods(Adv)), Number, Person, Type) -->
+verb_phrase_2(X, future(LF1&LF2), *(head(futperf(root(Infinitive))),mods(Adv)), Number, Person, Type) -->
     [will], [have],
-    adverb_phrase(Adv),
+    adverb_phrase(X, LF1, Adv),
     [V], 
-    {averb(Infinitive, Past, SingThrd, PresPart, V, Type)}.
+    {averb(X, LF2, Infinitive, Past, SingThrd, PresPart, V, Type)}.
 
-verb_phrase_2(*(head(futperf(root(Infinitive))),mods(Adv)),Number, Person, Type) -->
+verb_phrase_2(X, future(LF1&LF2), *(head(futperf(root(Infinitive))),mods(Adv)),Number, Person, Type) -->
     [will],
-    adverb_phrase(Adv),
+    adverb_phrase(X, LF1, Adv),
     [have],
     [V], 
-    {averb(Infinitive, Past, SingThrd, PresPart, V, Type)}.
+    {averb(X, LF2, Infinitive, Past, SingThrd, PresPart, V, Type)}.
  
-verb_phrase_2(*(head(futperf(root(Infinitive))),mods(Advl,Adv2)), Number, Person, Type) -->
+verb_phrase_2(X, future(LF1&LF2&LF3), *(head(futperf(root(Infinitive))),mods(Advl,Adv2)), Number, Person, Type) -->
     [will],
-    adverb_phrase(Adv1),
+    adverb_phrase(X, LF1, Adv1),
     [have],
-    adverb_phrase(Adv2),
+    adverb_phrase(X, LF2, Adv2),
     [V], 
-    {averb(Infinitive, Past, SingThrd, PresPart, V, Type)}.
+    {averb(X, LF3, Infinitive, Past, SingThrd, PresPart, V, Type)}.
 
 % Tenses for the Verb To Be - verbs of "being"
-sense_verb_phrase(Vphr,Number,Person) --> 
-    be_verb_phrase(Vphr,Number, Person).
+sense_verb_phrase(X, LF, Vphr,Number,Person) -->
+    be_verb_phrase(X, LF, Vphr,Number, Person).
  
-be_verb_phrase(Vphr,Number,Person) --> 
-    be_verb_phrase_2(Vphr, Number, Person).
+be_verb_phrase(X, LF, Vphr,Number,Person) -->
+    be_verb_phrase_2(X, LF, Vphr, Number, Person).
  
-be_verb_phrase(vp(Adv,Vphr),Number,Person) --> 
-    adverb_phrase(Adv),
-    be_verb_phrase_2(Vphr, Number,Person).
+be_verb_phrase(X, LF1&LF2, vp(Adv,Vphr),Number,Person) -->
+    adverb_phrase(X, LF1, Adv),
+    be_verb_phrase_2(X, LF2, Vphr, Number,Person).
 
 % tense: past simple
-be_verb_phrase_2(head(past(root(be))), Number, Person) --> 
+be_verb_phrase_2(X, past(LF), head(past(root(be))), Number, Person) -->
     [V],
-    {beverb(V,Number, Person, past)},!.
+    {beverb(X, LF, V, Number, Person, past)},!.
 
 % tense: past perfect
-be_verb_phrase_2(head(pastperf(root(be))), Number, Person) -->
+be_verb_phrase_2(X, past(LF), head(pastperf(root(be))), Number, Person) -->
     [had], [been].
 
-be_verb_phrase_2(*(head(pastperf(root(be))), mods(Adv)), Number, Person) -->
+be_verb_phrase_2(X, past(LF), *(head(pastperf(root(be))), mods(Adv)), Number, Person) -->
     [had],
-    adverb_phrase(Adv),
+    adverb_phrase(X, LF, Adv),
     [been].
  
 % tense: present simple
-be_verb_phrase_2(head(present(root(be))), Number, Person) -->
+be_verb_phrase_2(X, LF, head(present(root(be))), Number, Person) -->
     [V], 
-    {beverb(V, Number, Person, present)},!.
+    {beverb(X, LF, V, Number, Person, present)},!.
  
 %. tense: future simple
-be_verb_phrase_2(head(future(root(be))), Number, Person) --> [will], [be].
+be_verb_phrase_2(X, future(X), head(future(root(be))), Number, Person) --> [will], [be].
  
-be_verb_phrase_2(*(head(future(root(be))),mods(Adv)), Number, Person) -->
+be_verb_phrase_2(X, future(LF), *(head(future(root(be))),mods(Adv)), Number, Person) -->
     [will],
-    adverb_phrase(Adv),
+    adverb_phrase(X, LF, Adv),
     [be].
  
 % tense: present perfect
-be_verb_phrase_2(head(presperf(root(be))), Number, Person) -->
+be_verb_phrase_2(X, X, head(presperf(root(be))), Number, Person) -->
     {not(sing_third(Number,Person))},
     [have], [been].
 
-be_verb_phrase_2(*(head(presperf(root(be))), mods(Adv)), Number, Person) -->
+be_verb_phrase_2(X, LF, *(head(presperf(root(be))), mods(Adv)), Number, Person) -->
     {not(sing_third(Numlber,Person))},
     [have], 
-    adverb_phrase(Adv),
+    adverb_phrase(X, LF, Adv),
     [been].
  
-be_verb_phrase_2(head(presperf(root(be))), singular, third) --> [has], [been].
+be_verb_phrase_2(X, LF, head(presperf(root(be))), singular, third) --> [has], [been].
  
-be_verb_phrase_2(*(head(presperf(root(be))),mods(Adv)), singular, third) --> 
+be_verb_phrase_2(X, LF, *(head(presperf(root(be))),mods(Adv)), singular, third) -->
     [has],
-    adverb_phrase(Adv), 
+    adverb_phrase(X, LF, Adv),
     [been].
  
 % tense: future perfect
-be_verb_phrase_2(head(furperf(root(be))), Number, Person) --> [will], [have], [been].
+be_verb_phrase_2(X, future(X), head(furperf(root(be))), Number, Person) --> [will], [have], [been].
  
-be_verb_phrase_2(*(head(past(root(be))),mods(Adv)), Number, Person) --> 
+be_verb_phrase_2(X, future(LF), *(head(past(root(be))),mods(Adv)), Number, Person) -->
     [will],
-    adverb_phrase(Adv),
+    adverb_phrase(X, LF, Adv),
     [have], [been].
  
- be_verb_phrase_2(*(head(past(root(be))),mods(Adv)), Number, Person) -->
+ be_verb_phrase_2(X, past(LF), *(head(past(root(be))),mods(Adv)), Number, Person) -->
     [will],
     [have],
-    adverb_phrase(Adv), 
+    adverb_phrase(X, LF, Adv),
     [been].
  
-be_verb_phrase_2(*(head(past(root(be))),mods(Adv1,Adv2)), Number, Person) -->
+be_verb_phrase_2(X, past(LF1&LF2), *(head(past(root(be))),mods(Adv1,Adv2)), Number, Person) -->
     [will],
-    adverb_phrase(Advl), 
+    adverb_phrase(X, LF1, Advl),
     [have],
-    adverb_phrase(Adv2), 
+    adverb_phrase(X, LF2, Adv2),
     [been].
- 
-% ------------------------------------- 
+%
+% do / does
+%
+does_verb_phrase(X, do(X), head(root(do)), singular, first) --> [does].
+does_verb_phrase(X, do(X), head(root(do)), plural, third) --> [do].
+% -------------------------------------
 % terminal rules
 % -------------------------------------
-noun(comn(N), Number) -->
-    [N], {is_common_noun(N, Number)}.
+noun(X, LF, noun(N), Number) --> [N], {is_common_noun(N, Number), LF=..[N,X]}.
  
-determiner(det(Det), Number) --> [Det], {is_determiner(Det, Number)}.
+determiner(X,Prop,Assn,LF,det(Det),Number) --> [Det], {is_determiner(X, Prop, Assn, LF, Det, Number)}.
  
-adjective(adj(Adj)) --> [Adj], {is_adjective(Adj)}.
-adjective(adj(Possadj)) --> [PossAdj], {poss_adj(PossAdj)}.
+adjective(Prop,LF,adj(Adj)) --> [Adj], {is_adjective(Adj), LF=..[Adj,Prop]}.
+
+adjective(Prop,LF,adj(Possadj)) --> [PossAdj], {poss_adj(PossAdj), LF=..[PossAdj,Prop]}.
  
-adverb(adv(Adv)) --> [Adv], {is_adverb(Adv)}.
+adverb(Prop,LF,adv(Adv)) --> [Adv], {is_adverb(Adv), LF=..[Adv,Prop]}.
  
-preposition(prep(Prp)) --> [Prp], {is_preposition(Prp)}.
+preposition(Prop,LF,prep(Prep)) --> [Prep], {is_preposition(Prep), LF=..[Prep,Prop]}.
+
+pronoun(X, LF, pron(P), Number, Person, Case) --> [P], {is_pronoun(P, Number, Person, Case), LF=..[P,X]}.
  
-pronoun(pron(P), Number, Person, Case) --> [P], {is_pronoun(P, Number, Person, Case)}.
+relative_pronoun(X,LF,rpron(P), Number, Person, Case) --> [P], {is_rel_pronoun(P, Number, Person, Case), LF=..[P,X]}.
  
-relative_pronoun(rpron(P), Number, Person, Case) --> [P], {is_rel_pronoun(P, Number, Person, Case)}.
+subordconj(Prop,LF,subconj(Conj)) --> [Conj], {is_subconj(Conj), LF=..[Conj,Prop]}.
  
-subordconj(subconj(Conj)) --> [Conj], {is_subconj(Conj)}.
- 
-auxiliary(aux(Auxv)) --> [Auxv], {auxmodal(Auxv)}.
+auxiliary(Prop,LF,aux(Auxv)) --> [Auxv], {auxmodal(Auxv), LF=..[Auxv,Prop]}.
  
  
 % ----------------------------------------------------------------------------------
@@ -668,77 +620,91 @@ auxiliary(aux(Auxv)) --> [Auxv], {auxmodal(Auxv)}.
 % ---------------------------------------------------------------
 % determiners
 % ---------------------------------------------------------------
-is_determiner(the, _).
-is_determiner(a, singular). 
-is_determiner(an, singular).
-is_determiner(that, singular). 
-is_determiner(this, singular). 
-is_determiner(these, plural). 
-is_determiner(those, plural). 
-is_determiner(all, plural). 
-is_determiner(some, plural). 
-is_determiner(many, plural). 
-is_determiner(most, plural). 
-is_determiner(few, plural). 
-is_determiner(no, plural). 
-is_determiner(every, singular).
-is_determiner(any, _).
+is_determiner(X,Prop,Assn,the(X,(Prop & Assn)),the, _).
+is_determiner(X,Prop,Assn,exist(X,(Prop & Assn)),a, singular).
+is_determiner(X,Prop,Assn,exist(X,(Prop & Assn)),an, singular).
+is_determiner(X,Prop,Assn,the(X,(Prop & Assn)),that, singular).
+is_determiner(X,Prop,Assn,the(X,(Prop & Assn)),this, singular).
+is_determiner(X,Prop,Assn,the(X,(Prop & Assn)),these, plural).
+is_determiner(X,Prop,Assn,the(X,(Prop & Assn)),those, plural).
+is_determiner(X,Prop,Assn,all(X,(Prop ==> Assn)),all, plural).
+is_determiner(X,Prop,Assn,exist(X,(Prop ==> Assn)),some, plural). % skolemize?
+is_determiner(X,Prop,Assn,many(X,(Prop & Assn)),many, plural).
+is_determiner(X,Prop,Assn,most(X,(Prop & Assn)),most, plural).
+is_determiner(X,Prop,Assn,few(X,(Prop & Assn)),few, plural).
+is_determiner(X,Prop,Assn,not(X,(Prop & Assn)),no, plural).
+is_determiner(X,Prop,Assn,all(X,(Prop ==> Assn)),every, singular).
+is_determiner(X,Prop,Assn,all(X,(Prop ==> Assn)),any, _).
  
 % ---------------------------------------------------------------
 % the verb to be; copula
 % ---------------------------------------------------------------
-beverb(am, singular, first, present). 
-beverb(are, singular, second, present).
-beverb(is, singular, third, present). 
-beverb(was, singular, first, past). 
-beverb(vere, singular, second, past). 
-beverb(was, singular, third, past).
-beverb(are, plural, Person, present). 
-beverb(were, plural, Person, past).
+beverb(X, X, am, singular, first, present).
+beverb(X, X, are, singular, second, present).
+beverb(X, X, is, singular, third, present).
+beverb(X, X, was, singular, first, past).
+beverb(X, X, vere, singular, second, past).
+beverb(X, X, was, singular, third, past).
+beverb(X, X, are, plural, Person, present).
+beverb(X, X, were, plural, Person, past).
 
 % ---------------------------------------------------------------
 % other verbs
 % ---------------------------------------------------------------
 
-averb(want,wanted,wants,wanting,wanted,transitive).
-averb(go,went,goes,going,gone,intransitive).
-averb(know,knew,knows,knowing,known,transitive). 
-averb(like,liked,likes,liking,liked,transitive).
-averb(cross,crossed,crosses,crossing,crossed,transitive). 
-averb(beckon,beckoned,beckons,beckoning,beckoned,transitive). 
-averb(give, gave, gives, giving, given, bitransitive). 
-averb(find, found, finds, finding, found, bitransitive). 
-averb(find, found, finds, finding, found, transitive). 
-averb(see, saw, sees, seeing, seen, transitive).
-averb(eat, ate, eats, eating, eaten, transitive).
-averb(eat, ate, eats, eating, eaten, intransitive).
-averb(do, did, does, doing, done, transitive).
-averb(do, did, does, doing, done, bitransitive).
-averb(insist, insisted, insists, insisting, insisted, transitive). 
-averb(worry, worried, worries, worrying, worried, transitive). 
-averb(think, thought, thinks, thinking, thought, intransitive). 
-averb(die,died,dies,dying,died,intransitive). 
-averb(have,had,has,having,had,transitive).
-averb(need, needed, needs, needing, needed, transitive).
-averb(work, worked, works, working, worked, intransitive).
-averb(teach, taught, teaches, teaching, taught, bitransitive).
-averb(learn, learned, learns, learning, learned, transitive).
-averb(speak, spoke, speaks, speaking, spoken, transitive).
-averb(love, loved, loves, loving, loved, transitive).
-averb(move, moved, moves, moving, moved, intransitive).
-averb(duplicate, duplicated, duplicates, duplicating, duplicated, transitive). 
-averb(take, took, takes, taking, taken, tansitive).
-averb(wait, waited, waits, waiting, waited, intransitive).
-averb(get, got, gets, getting, gotten, transitive).
-averb(say, said, says, saying, said, transitive).
-averb(break, broke, breaks, breaking, broken, transitive).
-averb(lose, lost, loses, losing, lost, transitive).
-averb(continue, continued, continues, continuing, continued, transitive). 
-averb(let, let, lets, letting, let, transitive).
-averb(run, ran, runs, running, ran, intransitive).
-averb(fill, filled, fills, filling, filled, transitive).
-    %averb(V,Num,Root,transitive) :- morphit(V,List,Out), check_list(v,List,Out,Num,Root).
-    %averb(V,Num,Root,intransitive) :- morphit(V,List,Out), check_list(v,List,Out,Num,Root).
+averb((X,Y),want(X,Y),want,wanted,wants,wanting,wanted,transitive).
+averb(X,go(X),go,went,goes,going,gone,intransitive).
+averb((X,Y),know(X,Y),know,knew,knows,knowing,known,transitive).
+averb((X,Y),like(X,Y),like,liked,likes,liking,liked,transitive).
+averb((X,Y),cross(X,Y),cross,crossed,crosses,crossing,crossed,transitive).
+averb((X,Y),beckon(X,Y),beckon,beckoned,beckons,beckoning,beckoned,transitive).
+averb((X,Y,Z),give(X,Y,Z),give, gave, gives, giving, given, bitransitive).
+averb((X,Y,Z),find(X,Y,Z),find, found, finds, finding, found, bitransitive).
+averb((X,Y),find(X,Y),find, found, finds, finding, found, transitive).
+averb((X,Y),see(X,Y),see, saw, sees, seeing, seen, transitive).
+averb((X,Y),eat(X,Y),eat, ate, eats, eating, eaten, transitive).
+averb(X,eat(X),eat, ate, eats, eating, eaten, intransitive).
+averb((X,Y),do(X,Y),do, did, does, doing, done, transitive).
+averb((X,Y,Z),do(X,Y,Z),do, did, does, doing, done, bitransitive).
+averb((X,Y),insist(X,Y),insist, insisted, insists, insisting, insisted, transitive).
+averb((X,Y),worry(X,Y),worry, worried, worries, worrying, worried, transitive).
+averb(X,think(X),think, thought, thinks, thinking, thought, intransitive).
+averb(X,die(X),die,died,dies,dying,died,intransitive).
+averb((X,Y),have(X,Y),have,had,has,having,had,transitive).
+averb((X,Y),need(X,Y),need, needed, needs, needing, needed, transitive).
+averb(X,work(X),work, worked, works, working, worked, intransitive).
+averb((X,Y,Z),teach(X,Y,Z),teach, taught, teaches, teaching, taught, bitransitive).
+averb((X,Y),learn(X,Y),learn, learned, learns, learning, learned, transitive).
+averb((X,Y),speak(X,Y),speak, spoke, speaks, speaking, spoken, transitive).
+averb((X,Y),love(X,Y),love, loved, loves, loving, loved, transitive).
+averb(X,move(X),move, moved, moves, moving, moved, intransitive).
+averb((X,Y),duplicate(X,Y),duplicate, duplicated, duplicates, duplicating, duplicated, transitive).
+averb((X,Y),take(X,Y),take, took, takes, taking, taken, transitive).
+averb(X,wait(X),wait, waited, waits, waiting, waited, intransitive).
+averb((X,Y),get(X,Y),get, got, gets, getting, gotten, transitive).
+averb((X,Y),say(X,Y),say, said, says, saying, said, transitive).
+averb((X,Y),break(X,Y),break, broke, breaks, breaking, broken, transitive).
+averb((X,Y),lose(X,Y),lose, lost, loses, losing, lost, transitive).
+averb((X,Y),continue(X,Y),continue, continued, continues, continuing, continued, transitive).
+averb((X,Y),let(X,Y),let, let, lets, letting, let, transitive).
+averb(X,run(X),run, ran, runs, running, ran, intransitive).
+averb((X,Y),fill(X,Y),fill, filled, fills, filling, filled, transitive).
+
+%averb((X,Y),LF, Root,V,_,_,_,transitive) :- atom(V), morphit(V,List,Out), check_list(v,List,Out,Num,Root), LF=..[Root,X,Y].
+%averb((X,Y,Z)),LF, Root,V,_,_,_,bitransitive) :- atom(V), morphit(V,List,Out), check_list(v,List,Out,Num,Root), LF=..[Root,X,Y,Z].
+%averb(X,LF, Root,V,_,_,_,intransitive) :- atom(V), morphit(V,List,Out), check_list(v,List,Out,Num,Root), LF=..[Root,X].
+
+%averb((X,Y),LF, Root,_,V,_,_,transitive) :- atom(V), morphit(V,List,Out), check_list(v,List,Out,Num,Root), LF=..[Root,X,Y].
+%averb((X,Y,Z),LF, Root,_,V,_,_,bitransitive) :- atom(V), morphit(V,List,Out), check_list(v,List,Out,Num,Root), LF=..[Root,X,Y,Z].
+%averb(X,LF, Root,_,V,_,_,intransitive) :- atom(V), morphit(V,List,Out), check_list(v,List,Out,Num,Root), LF=..[Root,X].
+
+%averb((X,Y),LF, Root,_,_,V,_,transitive) :- atom(V), morphit(V,List,Out), check_list(v,List,Out,Num,Root), LF=..[Root,X,Y].
+%averb((X,Y,Z),LF, Root,_,_,V,_,bitransitive) :- atom(V), morphit(V,List,Out), check_list(v,List,Out,Num,Root), LF=..[Root,X,Y,Z].
+%averb(X,LF, Root,_,_,V,_,intransitive) :- atom(V), morphit(V,List,Out), check_list(v,List,Out,Num,Root), LF=..[Root,X].
+
+%averb((X,Y),LF, Root,_,_,_,V,transitive) :- atom(V), morphit(V,List,Out), check_list(v,List,Out,Num,Root), LF=..[Root,X,Y].
+%averb((X,Y,Z),LF, Root,_,_,_,V,bitransitive) :- atom(V), morphit(V,List,Out), check_list(v,List,Out,Num,Root), LF=..[Root,X,Y,Z].
+%averb(X,LF, Root,_,_,_,V,intransitive) :- atom(V), morphit(V,List,Out), check_list(v,List,Out,Num,Root), LF=..[Root,X].
 
 % ---------------------------------------------------------------
 % conjunction
@@ -781,8 +747,8 @@ is_adjective(intimidating).
 is_adjective(artificial).
 is_adjective(no).
 is_adjective(easier).
-    is_adjective(A) :- morphit(A,List,Out), check_list(a,List,Out,Num,Root). % s(A,_,_,a,_,_).
-    is_adjective(A) :- morphit(A,List,Out), check_list(s,List,Out,Num,Root). % s(A,_,_,s,_,_). % satellite - no antonym
+is_adjective(A) :- morphit(A,List,Out), check_list(a,List,Out,Num,Root). % s(A,_,_,a,_,_).
+is_adjective(A) :- morphit(A,List,Out), check_list(s,List,Out,Num,Root). % s(A,_,_,s,_,_). % satellite - no antonym
  
  % ---------------------------------------------------------------
  % adverbs
@@ -800,8 +766,8 @@ is_adverb(easy).
 is_adverb(slowly).
 is_adverb(here).
 is_adverb(gone).
-    %is_adverb(A) :- morphit(A,List,Out), check_list(r,List,Out,Num,Root). % s(A,_,_,r,_,_).
-    %is_adverb(A) :- morphit(A,List,Out), check_list(s,List,Out,Num,Root). % s(A,_,_,s,_,_).
+is_adverb(A) :- atom(A), morphit(A,List,Out), check_list(r,List,Out,Num,Root). % s(A,_,_,r,_,_).
+is_adverb(A) :- atom(A), morphit(A,List,Out), check_list(s,List,Out,Num,Root). % s(A,_,_,s,_,_).
  
 % ---------------------------------------------------------------
 % proper nouns 
@@ -898,7 +864,7 @@ is_common_noun(minute, singular).
 is_common_noun(minutes, plural).
 is_common_noun(mortal, _).
 is_common_noun(mortals, plural).
-    is_common_noun(N,Num) :- morphit(N,List,Out), check_list(n,List,Out,Num,Root).
+is_common_noun(N,Num) :- morphit(N,List,Out), check_list(n,List,Out,Num,Root).
 
 
 % mass nouns
@@ -1002,7 +968,89 @@ check_it(PartOfSpeech,[A,-pl],B,plu,A) :- isadictword(PartOfSpeech,B,A),!.
 check_it(PartOfSpeech,[A],B,plu,A)     :- isadictword(PartOfSpeech,B,A),!.
 check_it(PartOfSpeech,[A],B,sing,A)    :- isadictword(PartOfSpeech,B,A),!.
 isadictword(PartOfSpeech,[Root,_,_,PartOfSpeech],Root).
-    
+
+/*
+ * Prover
+ */
+
+prove(true,RB) :- !.
+prove((A,B),RB) :- !,
+    prove(A,RB), prove(B,RB).
+
+prove(A,RB) :-
+    find_clause((A:-B),RB),
+    prove(B,RB).
+
+find_clause(C,[R|_]) :-
+    copy_term(C,R).
+
+find_clause(C,[R|Rs]) :-
+    find_clause(C,Rs).
+
+copy_element(X,Ys) :-
+    element(X1,Ys),
+    copy_term(X1,X).
+
+transform((A,B),[(A:-true)|Rest]) :- !,
+    transform(B,Rest).
+
+transform(A,[(A:-true)]).
+
+/*
+ * NL generation
+ */
+
+% generate sentences
+show_answer([]).
+
+show_answer([H|T]) :-
+    show_answer(H),
+    show_answer(T).
+
+show_answer(Clause) :-
+    %generate_nl(Clause,Eng),
+    writeln(Clause).
+
+generate_nl((A:-B), ['all ',BA,' are ',AA]) :-
+    generate_nl(B,BA),
+    generate_nl(A,AA).
+
+generate_nl(A, [HA,' is a ',TA]) :-
+    A=..[H,T],
+    generate_nl(H,HA),
+    generate_nl(T,TA).
+
+generate_nl(A, A).
+
+% show the rules in the Rule Base in English
+show_rules([]).
+show_rules([H|T]) :-
+    show_rules(H),
+    show_rules(T).
+show_rules(Rule) :-
+    transform(Rule, Clauses),
+    show_answer(Clauses).
+
+% execute the logical form
+
+do_it(LF, RuleBase) :-
+    show_answer(LF),
+    writeln('done.').
+
+handle_logical_form(question(LF), RuleBase) :-
+    prove(LF, RuleBase),
+    transform(LF, Clauses),
+    show_answer(Clauses).
+
+handle_logical_form(statement(LF), RuleBase) :-
+    transform(LF, Clauses),
+    show_answer(Clauses),
+    nl_shell([LF|RuleBase]).
+
+handle_logical_form(imperative(LF), RuleBase) :-
+    transform(LF, Clauses),
+    do_it(Clauses, RuleBase).
+
 /*
  * Support stuff
  */
@@ -1024,10 +1072,10 @@ is_terminal_punc(.).
 is_terminal_punc(?).
 is_terminal_punc(!).
 
-s_type([.],statement) :-!.
-s_type([?],question) :-!.
-s_type([!],imperative) :-!.
-s_type(X,X) :-!.
+s_type([.],statement) :- !.
+s_type([?],question) :- !.
+s_type([!],imperative) :- !.
+s_type(X,X) :- !.
 
 split_atom(S, A, L) :- atomic_list_concat(XL, S, A), delete(XL, '', L).
 
@@ -1045,6 +1093,7 @@ capitalize([H1|T], [H2|T]) :- code_type(H2, to_upper(H1)).
 trim_period([.],[]).
 trim_period([X|R],[X|T]) :- trim_period(R,T).
 
+% pretty print parse form
 nspaces(N) :- N > 0, write(' '), N1 is N - 1, nspaces(N1).
 nspaces(_).
 
@@ -1077,23 +1126,34 @@ definition(Word) :-
     writeln(Definition),
     !.
 
+/*
+ * Main parse entry point
+*/
+
 parse :-
-    write('Enter English input or q to quit:'),nl,
+    nl_shell(RuleBase).
+
+nl_shell(RuleBase) :-
+    write(':'),flush,
     input_to_atom_list(Input),
     headtail(Input, Root, Punctuation),
+    get_time(T1),
    ( Root == [q] -> halt;
        ( % if
-             get_time(T1),
-             %s_type(Punctuation, S_type), write(S_type), write(': '), writeln(Root),
-             sentence(Logical_form, Parse_form, Root, []),
-             write('Logical Form: '),writeln(Logical_form),
-             writeln('Parse Form: '),pp(Parse_form,1),nl,
-             get_time(T2),
-             Mseconds is (T2 - T1) * 1000,
-             write(Mseconds),writeln('msec'),
-             parse;
+            %s_type(Punctuation, S_type), write(S_type), write(': '), writeln(Root),
+            sentence(Logical_form, Parse_form, Root, []),
+            write('Logical Form: '),writeln(Logical_form),
+            writeln('Parse Form: '),pp(Parse_form,1),nl,
+            %handle_logical_form(Logical_form, RuleBase),
+            get_time(T2),
+            Msec is (T2 - T1) * 1000,
+            format('~2f~w~n', [Msec,msec]),
+            nl_shell(RuleBase);
          % else
-            write("Pardon?"),nl,parse
+            get_time(T2),
+            Msec is (T2 - T1) * 1000,
+            format('~2f~w~n', [Msec,msec]),
+            write("Pardon?"),nl,nl_shell(RuleBase)
         )
      ).
 
