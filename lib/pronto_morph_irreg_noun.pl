@@ -269,6 +269,7 @@ irregular_form( maremme,X,[maremma,-pl| X ]).
 irregular_form( markkaa,X,[markka,-pl| X ]).
 irregular_form( matzoth,X,[matzo,-pl| X ]).
 irregular_form( megilloth,X,[megillah,-pl| X ]).
+irregular_form( men,X,[man,-pl| X ]).
 irregular_form( menservants,X,[manservant,-pl| X ]).
 irregular_form( mesdames,X,[madame,-pl| X ]).
 irregular_form( mesdemoiselles,X,[mademoiselle,-pl| X ]).
@@ -450,7 +451,7 @@ irregular_form( vires,X,[vis,-pl| X ]).
 irregular_form( vivariia,X,[vivarium,-pl| X ]).
 irregular_form( voces,X,[vox,-pl| X ]).
 irregular_form( volte,X,[volta,-pl| X ]).
-irregular_form( wanderjahre,X,[wanderjahr,-pl| X ]).
+irregular_form( women,X,[woman,-pl| X ]).
 irregular_form( wharves,X,[wharf,-pl| X ]).
 irregular_form( woodlice,X,[woodlouse,-pl| X ]).
 irregular_form( yeshivahs,X,[yeshiva,-pl| X ]).
