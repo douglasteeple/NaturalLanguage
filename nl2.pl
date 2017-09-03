@@ -107,16 +107,16 @@ subject(X, Assn, LF, subj(IVP), singular, third) -->
  % other noun type parts
  %------------------------------------------------------------------
  % a nominative case noun phrase is a predicate nominative
-pred_nominative(X, Assn, LF, dnom(NPhr), Number, Person) -->
+pred_nominative(X, Assn, LF, dnom(NPhr), Number, Person) --> {trace_it((trying__pred_nominative__noun_phrase,X, Assn, LF, NPhr, Number, Person))},
     noun_phrase(X, Assn, LF, NPhr, Number, Person, nominative),{trace_it((pred_nominative__noun_phrase,X, Assn, LF, NPhr, Number, Person))}.
- 
+
  % any adjective phrase is a predicate adjective
  pred_adjective(X, Assn, pdadj(Adj)) -->
     adjective_phrase(X, Assn, Adj),{trace_it((pred_adjective__adjective_phrase,X, Assn, LF, NPhr, Number, Person))}.
  
  direct_object(X, Assn, LF, do(NPhr), Number, Person) -->
     noun_phrase(X, Assn, LF, NPhr, Number, Person, objective),{trace_it((direct_object__noun_phrase,X, Assn, LF, NPhr, Number, Person))}.
- 
+
  indirect_object(X, Assn, LF, io(NPhr), Number, Person) -->
     noun_phrase(X, Assn, LF,NPhr, Number, Person, objective),{trace_it((indirect_object__noun_phrase,X, Assn, LF, NPhr, Number, Person))}.
  
@@ -148,9 +148,9 @@ predicate_2(X, Assn, VPhr, Number, Person) -->
  
  % sense verb -\-predicate nominative 
  % example: [I am a rabbit.]
- predicate_2(X, Assn, pred(VPhr, pnom(PredNom)), Number, Person) -->
-    sense_verb_phrase(X, Assn1, VPhr, Number, Person),{trace_it((predicate_2_sense_verb_phrase,X, Y,Assn, LF, Assn2, Number, Person))},
-    pred_nominative(Y, Assn2, Assn, PredNom, Number, Person),{trace_it((predicate_2a__pred_nominative,X, Y,Assn, LF, Assn2, Number, Person))}, {X=Y},{trace_it((xeqy__predicate_2b,X, Assn, LF, Assn2, Number, Person))}.
+ predicate_2(X, LF, pred(VPhr, pnom(PredNom)), Number, Person) -->
+    sense_verb_phrase(X, Assn, VPhr, Number, Person),{trace_it((predicate_2_sense_verb_phrase,X, Y, LF, Assn, Number, Person))},
+    pred_nominative(Y, Assn2, LF, PredNom, Number, Person),{trace_it((predicate_2a__pred_nominative,X, Y,Assn, LF, Assn2, Number, Person))}, {X=Y},{trace_it((xeqy__predicate_2b,X, Assn2, LF, Assn2, Number, Person))}.
 
 % sense verb -\- predicate adjective
 % example: [I am angry.]
@@ -296,7 +296,7 @@ proper_noun_phrase(X, Assn, Assn, Proper) --> proper_noun_phrase2(X, Assn, Assn,
 proper_noun_phrase2(Proper, Assn, Assn, Proper) --> [Proper], {proper_noun(Proper)}.
 
 % a proper noun is a noun phrase
-noun_phrase(X,Assn,Assn,np(head(name(Proper))), singular, third, Case) --> proper_noun_phrase(X, Assn, Assn, Proper).
+noun_phrase(X,Assn,Assn,np(head(name(Proper))), singular, Person, Case) --> proper_noun_phrase(X, Assn, Assn, Proper),{trace_it((noun_phrase__proper_noun_phrase,X, Y,Assn, Number, singular, Person, Case))}.
 
 % infinitive verb phrase is a noun phrase
 noun_phrase(X,Assn,Assn,np(head(InfPhr)), singular, third, Case) --> inf_verb_phrase(X,Assn,InfPhr).
@@ -306,15 +306,16 @@ noun_phrase(X,Assn,Assn,np(head(GerPhr)),singular, third, Case) --> gerund_phras
  
 % noun with determiner in front
 noun_phrase(X, Assn, LF, np(Det, NPhr2), Number, third, Case) -->
-    determiner(X, Prop, Assn, LF, Det, Number),{trace_it((noun_phrase__determiner,X, Prop,Assn, Prop1, Det, Number, Person))},
-    noun_phrase_2(X, Prop, Prop2, NPhr2, Number),{trace_it((noun_phrase__noun_phrase_2,X, Prop, Prop2, Number, Person))}.
+    determiner(X, Prop, Assn, LF, Det, Number),{trace_it((noun_phrase__determiner,X, Prop,Assn, LF, Det, Number, Person))},
+    noun_phrase_2(X, Prop, Prop2, NPhr2, Number),{trace_it((noun_phrase__det_noun_phrase_2,X, Prop, Prop2, Number, Person))}.
 
 % noun without determiner
 noun_phrase(X, Assn, Assn, np(NPhr2), Number, third, Case) -->
     noun_phrase_2(X, Assn, LF, NPhr2, Number),{trace_it((noun_phrase__noun_phrase_2,X, Y,Assn, LF, Assn2, Number, Person))}.
  
 % pronoun is a noun phrase
-noun_phrase(X,Assn,Assn,np(head(NPhr)), Number,Person, Case) --> pronoun(X,Assn, NPhr, Number, Person, Case),{trace_it((noun_phrase_pronoun,X, Y,Assn, LF, Assn2, Number, Person))}.
+noun_phrase(X,Assn,Assn,np(head(NPhr)), Number,Person, Case) -->
+    pronoun(X,Assn, NPhr, Number, Person, Case),{trace_it((noun_phrase_pronoun,X, Y,Assn, LF, Assn2, Number, Person))}.
  
 noun_phrase(X,Assn,LF, np(NPhr1, conj(Conj), NPhr2), plural, Person, Case) -->
     noun_phrase_2(X,Assn,LF1, NPhr1, Number),
@@ -329,16 +330,17 @@ noun_phrase_2(X,Assn,Assn1&Assn2,*(NPhr2, mods(Adj)), Number) -->
     noun_phrase_3(X, Assn, Assn2, NPhr2, Number),{trace_it((noun_phrase_2__noun_phrase_3,X, Y,Assn, LF, Assn2, Number, Person))}.
  
 % A noun without adjective
-noun_phrase_2(X,Assn,LF,NPhr3, Number) --> noun_phrase_3(X,Assn,LF,NPhr3, Number),{trace_it((noun_phrase_2__noun_phrase_3,X, Y,Assn, LF, Assn2, Number, Person))}.
+noun_phrase_2(X,Assn,LF,NPhr3, Number) -->
+    noun_phrase_3(X,Assn,LF,NPhr3, Number),{trace_it((noun_phrase_2__noun_phrase_3,X, Y,Assn, LF, Assn2, Number, Person))}.
  
 % A noun with prepositional phrase after
 noun_phrase_3(X, Assn, LF1&LF2, *(head(N),Pmods), Number) -->
-    noun(X, LF1, N, Number),{trace_it((noun_phrase3__noun,X, Y,Assn, LF1, Number, Person))},
-    noun_complements(X, LF2, Pmods),{trace_it((noun_phrase3__noun_complements,X, Y,Assn, LF2, Number, Person))}.
+    noun(X, LF1, N, Number),{trace_it((noun_phrase3__noun,X, Assn, LF1, Number, Person))},
+    noun_complements(X, LF2, Pmods),{trace_it((noun_phrase3__noun_complements,X, Assn, LF2, Number, Person))}.
  
 % plain noun
 noun_phrase_3(X, Assn, Assn, head(N), Number) -->
-    noun(X, Assn, N, Number),{trace_it((noun_phrase3,X, Y,Assn, Assn1, Number, Person))}.
+    noun(X, Assn, N, Number),{trace_it((plain_noun_phrase3,X, Assn, Number))}.
  
 %--------------------------------------------------------------------
 % noun post modifiers can be prepositions, subordinate adjectives, etc.
@@ -538,8 +540,9 @@ does_verb_phrase(X, do(X), head(root(do)), plural, third) --> [do].
 % -------------------------------------
 % terminal rules
 % -------------------------------------
-noun(X, LF, noun(N), Number) --> [N], {is_common_noun(N, Number), LF=..[N,X]}.
- 
+noun(X, LF, noun(N), plural) --> [N], {is_common_noun(R, N), LF=..[R,X]}.
+noun(X, LF, noun(N), singular) --> [N], {is_common_noun(N,_), LF=..[N,X]}.
+
 determiner(X,Prop,Assn,LF,det(Det),Number) --> [Det], {is_determiner(X, Prop, Assn, LF, Det, Number)}.
  
 adjective(Prop,LF,adj(Adj)) --> [Adj], {is_adjective(Adj), LF=..[Adj,Prop]}.
@@ -566,15 +569,15 @@ auxiliary(Prop,LF,aux(Auxv)) --> [Auxv], {auxmodal(Auxv), LF=..[Auxv,Prop]}.
 % ---------------------------------------------------------------
 % determiners
 % ---------------------------------------------------------------
-is_determiner(X,Prop,Assn,the(X,(Prop & Assn)),the, _).
-is_determiner(X,Prop,Assn,exist(X,(Prop & Assn)),a, singular).
-is_determiner(X,Prop,Assn,exist(X,(Prop & Assn)),an, singular).
-is_determiner(X,Prop,Assn,the(X,(Prop & Assn)),that, singular).
-is_determiner(X,Prop,Assn,the(X,(Prop & Assn)),this, singular).
-is_determiner(X,Prop,Assn,the(X,(Prop & Assn)),these, plural).
-is_determiner(X,Prop,Assn,the(X,(Prop & Assn)),those, plural).
+is_determiner(X,Prop,Assn,the(X,(Prop)),the, _).
+is_determiner(X,Prop,Assn,exist(X,(Prop)),a, singular).
+is_determiner(X,Prop,Assn,exist(X,(Prop)),an, singular).
+is_determiner(X,Prop,Assn,that(X,(Prop)),that, singular).
+is_determiner(X,Prop,Assn,this(X,(Prop)),this, singular).
+is_determiner(X,Prop,Assn,this(X,(Prop)),these, plural).
+is_determiner(X,Prop,Assn,that(X,(Prop & Assn)),those, plural).
 is_determiner(X,Prop,Assn,all(X, (Prop ==> Assn)),all, plural).
-is_determiner(X,Prop,Assn,exist(X,(Prop ==> Assn)),some, plural). % skolemize?
+is_determiner(X,Prop,Assn,some(X,(Prop & Assn)),some, plural). % skolemize?
 is_determiner(X,Prop,Assn,many(X,(Prop & Assn)),many, plural).
 is_determiner(X,Prop,Assn,most(X,(Prop & Assn)),most, plural).
 is_determiner(X,Prop,Assn,few(X,(Prop & Assn)),few, plural).
@@ -726,92 +729,10 @@ proper_noun(Name) :- atom(Name), atom_codes(Name, Codes2), head(Codes2, First), 
 % ---------------------------------------------------------------
 % count nouns
 % ---------------------------------------------------------------
-is_common_noun(force, singular).
-is_common_noun(forces, plural).
-is_common_noun(convoy, singular).
-is_common_noun(convoys, plural). 
-is_common_noun(lake, singular). 
-is_common_noun(lakes, plural). 
-is_common_noun(hill, singular).
-is_common_noun(hills, plural). 
-is_common_noun(avenuo, singular). 
-is_common_noun(avenues, plural).
-is_common_noun(avenue, singular).
-is_common_noun(approaches, plural).
-is_common_noun(area, singular). 
-is_common_noun(areas, plural).
-is_common_noun(book, singular). 
-is_common_noun(books, plural). 
-is_common_noun(garden,singular).
-is_common_noun(gardens, plural). 
-is_common_noun(car, singular).
-is_common_noun(cars, plural). 
-is_common_noun(truck, singular). 
-is_common_noun(trucks, plural). 
-is_common_noun(room, singular). 
-is_common_noun(rooms, plural). 
-is_common_noun(field, singular). 
-is_common_noun(fields, plural).
-is_common_noun(river, singular).
-is_common_noun(rivers, plural). 
-is_common_noun(road, singular).
-is_common_noun(roads, plural). 
-is_common_noun(bridgo, singular). 
-is_common_noun(bridges, plural).
-is_common_noun(woman, singular). 
-is_common_noun(women, plural).
-is_common_noun(pizza, singular).
-is_common_noun(pizzas, plural). 
-is_common_noun(stallions, plural). 
-is_common_noun(stallion, singular). 
-is_common_noun(men, plural).
-is_common_noun(man, singular). 
-is_common_noun(life, singular).
-is_common_noun(lives, plural).
-is_common_noun(agency, singular). 
-is_common_noun(agencies, plural). 
-is_common_noun(cucumber, singular).
-is_common_noun(cucumbers, plural). 
-is_common_noun(carrot, singular). 
-is_common_noun(carrots, plural). 
-is_common_noun(orange, singular).
-is_common_noun(oranges, plural). 
-is_common_noun(apple,singular).
-is_common_noun(apples, plural). 
-is_common_noun(cape, singular). 
-is_common_noun(capes, plural).
-is_common_noun(rabbit, singular). 
-is_common_noun(rabbits, plural). 
-is_common_noun(saw, singular). 
-is_common_noun(saws, plural).
-is_common_noun(governments, plural).
-is_common_noun(computer, singular).
-is_common_noun(computers, plural).
-is_common_noun(intelligence, singular).
-is_common_noun(enemy, singular).
-is_common_noun(enemies, plural).
-is_common_noun(element, singular). 
-is_common_noun(elements, plural).
-is_common_noun(line, singular).
-is_common_noun(lines, plural).
-is_common_noun(location, singular).
-is_common_noun(locations, plural).
-is_common_noun(conversation, singular).
-is_common_noun(conversations, plural).
-is_common_noun(time, singular).
-is_common_noun(times, plural).
-is_common_noun(end, singular).
-is_common_noun(ends, plural).
-is_common_noun(beginning, singular).
-is_common_noun(beginnings, plural).
-is_common_noun(hour, singular).
-is_common_noun(hours, plural).
-is_common_noun(minute, singular).
-is_common_noun(minutes, plural).
-is_common_noun(mortal, _).
-is_common_noun(mortals, plural).
-is_common_noun(N,Num) :- morphit(N,List,Out), check_list(n,List,Out,Num,Root).
-
+%is_common_noun(mortal, mortals).
+%is_common_noun(mortal, mortal).
+is_common_noun(N,_) :- atom(N), morphit(N,List,Out), check_list(n,List,Out,Num,N).
+is_common_noun(Root,N) :- atom(N), morphit(N,List,Out), check_list(n,List,Out,Num,Root).
 
 % mass nouns
 is_common_noun(ground, mass).
@@ -832,8 +753,9 @@ poss_adj(its).
 
 is_pronoun(everyone, singular, third, Case).
 is_pronoun(nothing, singular, third, Case).
-is_pronoun(i, singular, first, nominative). 
-is_pronoun(you,Number, second,  nominative). 
+is_pronoun(i, singular, first, nominative).
+is_pronoun('I', singular, first, nominative).
+is_pronoun(you,Number, second,  nominative).
 is_pronoun(he, singular, third, nominative). 
 is_pronoun(she, singular, third, nominative).
 is_pronoun(it, singular, third, Case). 
@@ -940,6 +862,14 @@ copy_element(X,Ys) :-
 transform((A,B),[(A:-true)|Rest]) :- !,
     transform(B,Rest).
 
+transform(all(X,Y==>Z),[(Z:-Y)]).
+transform(exist(X,Y==>Z),[((Y:-true),(Z:-true))]).
+transform(exist(X,Y&Z),[((Y:-true),(Z:-true))]).
+transform(some(X,Y&Z),[((count(Y,CY)),(count(Z,CZ),(C is CY/CZ, C>0.1)))]).
+transform(many(X,Y&Z),[((count(Y,CY)),(count(Z,CZ),(C is CY/CZ, C>0.5)))]).
+transform(most(X,Y&Z),[((count(Y,CY)),(count(Z,CZ),(C is CY/CZ, C>0.8)))]).
+transform(few(X,Y&Z),[((count(Y,CY)),(count(Z,CZ),(C is CY/CZ, C<0.1)))]).
+transform(not(X,Y&Z),[((count(Y,CY)),(count(Z,CZ),(CY=0.0, CZ>0.0)))]).
 transform(A,[(A:-true)]).
 
 /*
@@ -997,17 +927,12 @@ do_it(LF, RuleBase) :-
 handle_logical_form(question(LF), RuleBase) :-
 write('Proving '),writeln(LF),
     prove(LF, RuleBase),
-    transform(LF, Clauses),
-write('Proving2 '),writeln(Clauses),
-    show_answer(Clauses).
+write('Proved '),writeln(LF),
+    show_answer(LF).
 
 handle_logical_form(question(LF), RuleBase) :-
-write('cant prove '),writeln(LF),
-    transform(LF, Clauses),
-write('Proving '),writeln(LF),
-    show_answer(Clauses).
-
-handle_logical_form(statement(bad), RuleBase).
+write('cant prove '),
+    show_answer(LF).
 
 handle_logical_form(statement(LF), RuleBase) :-
     transform(LF, Clauses),
