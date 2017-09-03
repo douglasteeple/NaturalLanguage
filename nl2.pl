@@ -306,9 +306,9 @@ noun_phrase(X,Assn,Assn,np(head(GerPhr)),singular, third, Case) --> gerund_phras
  
 % noun with determiner in front
 noun_phrase(X, Assn, LF, np(Det, NPhr2), Number, third, Case) -->
-    determiner(X, Prop, Assn, Prop, Det, Number),{trace_it((noun_phrase__determiner,X, Y,Assn, LF, Assn2, Number, Person))},
-    noun_phrase_2(X, Assn, Prop, NPhr2, Number),{trace_it((noun_phrase__noun_phrase_2,X, Y,Assn, LF, Assn2, Number, Person))}.
- 
+    determiner(X, Prop, Assn, LF, Det, Number),{trace_it((noun_phrase__determiner,X, Prop,Assn, Prop1, Det, Number, Person))},
+    noun_phrase_2(X, Prop, Prop2, NPhr2, Number),{trace_it((noun_phrase__noun_phrase_2,X, Prop, Prop2, Number, Person))}.
+
 % noun without determiner
 noun_phrase(X, Assn, Assn, np(NPhr2), Number, third, Case) -->
     noun_phrase_2(X, Assn, LF, NPhr2, Number),{trace_it((noun_phrase__noun_phrase_2,X, Y,Assn, LF, Assn2, Number, Person))}.
