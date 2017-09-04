@@ -843,18 +843,23 @@ isadictword(PartOfSpeech,[Root,_,_,PartOfSpeech],Root).
  * Prover
  */
 
-prove(true,RB) :-
+prove(true,RB) :- !,
     %trace_it(('true',RB)),
     true.
 
-prove(A,[A]) :-
+prove(A,[A]) :- !,
     %trace_it(('Fact',A)),
     true.
 
+prove(A=A,_) :- !,
+    %trace_it(('equality',A)),
+    true.
+
 prove((A,B),RB) :-
-    %trace_it(('Prove ',A,B,RB)),
-    prove(A,RB),
-    prove(B,RB).
+    %trace_it(('Prove ',B,RB)),
+    prove(B,RB),
+    %trace_it(('Prove ',A,RB)),
+    prove(A,RB).
 
 prove(A,RB) :-
     %trace_it(('Prove ',A,RB)),
@@ -864,8 +869,10 @@ prove(A,RB) :-
 
 prove(A,RB) :-
     %trace_it(('Prove ',A,RB)),
-    find_clause(A,RB).%,
-    %trace_it(('Found ',A,'in',RB)).
+    find_clause(A,RB),
+    true.%trace_it(('Found ',A,'in',RB)).
+
+prove(_,_) :- !,fail.
 
 find_clause(C,(C:-B)) :-
     true.%trace_it(('find_clause a ',C)).
@@ -878,13 +885,8 @@ find_clause(C,[_|Tail]) :-
     %trace_it(('find_clause c ',C,' rest ',Tail)),
     find_clause(C,Tail).
 
-copy_element(X,Ys) :-
-    element(X1,Ys),
-    copy_term(X1,X).
-
 transform((A,B),[(A:-true)|Rest]) :- !,
     transform(B,Rest).
-
 transform(all(X,Y==>Z),[(Z:-Y)]).
 transform(exist(X,Y==>Z),[((Y:-true),(Z:-true))]).
 transform(exist(X,Y),[Y]).
@@ -894,6 +896,7 @@ transform(many(X,Y&Z),[((count(Y,CY)),(count(Z,CZ),(C is CY/CZ, C>0.5)))]).
 transform(most(X,Y&Z),[((count(Y,CY)),(count(Z,CZ),(C is CY/CZ, C>0.8)))]).
 transform(few(X,Y&Z),[((count(Y,CY)),(count(Z,CZ),(C is CY/CZ, C<0.1)))]).
 transform(not(X,Y&Z),[((count(Y,CY)),(count(Z,CZ),(CY=0.0, CZ>0.0)))]).
+transform(A&B,(A,B)).
 transform(A,A).
 
 /*
@@ -933,15 +936,59 @@ generate_nl((A:-B)) :-
     %trace_it(('generate_nl c ',B)),
     generate_nl(B).
 
+% arity one - man('John')
 generate_nl(A) :-
-    functor(A, F, N),
-    A=..[H|T],
-    %trace_it(('generate_nl d ',A,H,T)),
-    generate_nl(T),
+    functor(A, F, 1),
+    A=..[H|Arg],
+    %trace_it(('generate_nl1 d ',A,H,Arg)),
+    generate_nl(Arg),
     generate_nl(' is a '),
-    %trace_it(('generate_nl d2 ',A,H,T)),
+    %trace_it(('generate_nl1 d2 ',A,H,Arg)),
     generate_nl(H).
-    %trace_it(('generate_nl d3 ',A,H,T)).
+
+% arity two - likes(john,mary)
+generate_nl(A) :-
+    functor(A, F, 2),
+    A=..[H,Arg1,Arg2],
+    %trace_it(('generate_nl2 d ',A,H,Arg1,Arg2)),
+    averb(_,_,H, _, NewH, _, _, _),
+    %trace_it(('generate_nl2 d1 ',A,H,Arg1,Arg2)),
+    generate_nl(Arg1),
+    %trace_it(('generate_nl2 d2 ',A,H,Arg1,Arg2)),
+    generate_nl(' '),
+    generate_nl(NewH),
+    generate_nl(' '),
+    %trace_it(('generate_nl2 d3 ',A,H,Arg1,Arg2)),
+    generate_nl(Arg2).
+
+% arity two - likes(john,mary)
+generate_nl(A) :-
+    functor(A, F, 2),
+    A=..[H,Arg1,Arg2],
+    %trace_it(('generate_nl2 d ',A,H,Arg1,Arg2)),
+    generate_nl(Arg1),
+    %trace_it(('generate_nl2 d2 ',A,H,Arg1,Arg2)),
+    generate_nl(' '),
+    generate_nl(H),
+    generate_nl(' '),
+    %trace_it(('generate_nl2 d3 ',A,H,Arg1,Arg2)),
+    generate_nl(Arg2).
+
+% arity three - gave(mary,john,X) & X=
+generate_nl(A) :-
+    functor(A, F, 1),
+    A=..[H,Arg1,Arg2,Arg3],
+    %trace_it(('generate_nl3 d ',A,H,Arg1,Arg2)),
+    generate_nl(Arg1),
+    %trace_it(('generate_nl3 d2 ',A,H,Arg1,Arg2)),
+    generate_nl(' '),
+    generate_nl(H),
+    %trace_it(('generate_nl3 d3 ',A,H,Arg1,Arg2)),
+    generate_nl(' '),
+    generate_nl(Arg2),
+    %trace_it(('generate_nl3 d4 ',A,H,Arg1,Arg2)),
+    generate_nl(' '),
+    generate_nl(Arg3).
 
 generate_nl([H|T]) :-
     trace_it(('generate_nl e ',H,T)),
@@ -964,7 +1011,7 @@ do_it(LF, RuleBase) :-
     writeln('done.').
 
 handle_logical_form(question(LF), RuleBase) :-
-    transform(LF, Clauses),!,
+    transform(LF, Clauses), !,
     trace_it(('Proving ',LF,Clauses,'in',RuleBase)),
     prove(Clauses, RuleBase),
     trace_it(('Proved ',LF,Clauses,'in',RuleBase)),
@@ -1093,7 +1140,7 @@ check_for_missing_vocabulary_words2(Word) :-
 */
 
 parse :-
-    nl_shell([]).
+    nl_shell([me('Alexa')]).
 
 nl_shell(RuleBase) :-
     trace_it(('New shell',RuleBase)),
