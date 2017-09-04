@@ -17,8 +17,11 @@
 :- ensure_loaded('morph_lookup.pl').
 :- ensure_loaded('wn_g.pl').
 
-%trace_it(X) :- !.
-trace_it(X) :- writeln(X).
+:-style_check(-singleton).
+
+tracing('On').
+trace_it(X) :- tracing('On'), writeln(X).
+trace_it(_) :- !.
 
 % ------------------------------------------------------------------------------------------------
 % Sentences and Independent Clauses
@@ -46,14 +49,14 @@ sentence(question(LF), question(does(VPhr,Object,Object2))) -->
     indirect_object(Y, Assn2, LF, Object2, Number1, Person1).
 
 % imperative
-sentence(imperative(LF), imperative(VPhr, Object)) -->
-    verb_phrase(X, Assn, VPhr, singular, first, intransitive),
-    direct_object(Y, Assn, LF, Object, Number, Person).
+sentence(imperative(LF), imperative(VPhr, Object)) --> {trace_it(imperative)},
+    verb_phrase(X, Assn, VPhr, singular, first, intransitive),{trace_it((imperative__verb_phrase,X, Assn, LF, VPhr, Number, Person))},
+    direct_object(X, Assn, LF, Object, Number1, Person1),{trace_it((imperative__direct_object,X, Assn,Object, LF, Number, Person))}.
  
-sentence(imperative(LF), imperative(VPhr, Object, Object2)) -->
-    verb_phrase((X,Y,Z), Assn, VPhr, singular, first, bitransitive),
-    direct_object(X, Assn, Assn1, Object, Number, Person),
-    indirect_object(Y, Assn1, LF, Object2, Number, Person).
+sentence(imperative(LF), imperative(VPhr, Object, Object2)) --> {trace_it(imperative2)},
+    verb_phrase((X,Y), Assn, VPhr, singular, first, bitransitive),{trace_it((imperative__verb_phrase,X, Assn, LF, VPhr, Number, Person))},
+    direct_object(X, Assn, Assn1, Object, Number1, Person1),{trace_it((imperative__direct_object,X, Assn,Object, LF, Number, Person))},
+    indirect_object(Y, Assn1, LF, Object2, Number2, Person2),{trace_it((imperative__indirect_object,X, Assn1,Object2, LF, Number, Person))}.
 
 % statement
 sentence(statement(LF), statement(Sent)) -->
@@ -295,6 +298,7 @@ gerund_phrase(X, Assn1&Assn2, gerp(Gerp2,Advphr)) -->
 proper_noun_phrase(X, Assn, Assn, Proper) --> proper_noun_phrase2(X, Assn, Assn, Proper1), proper_noun_phrase(X, Assn, Assn, Proper2), {atomic_list_concat([Proper1, Proper2], ' ', Proper)}.
 proper_noun_phrase(X, Assn, Assn, Proper) --> proper_noun_phrase2(X, Assn, Assn, Proper).
 
+proper_noun_phrase2(Proper, Assn, Assn, Unquoted) --> [Proper], {proper_noun(Proper,Unquoted)}.
 proper_noun_phrase2(Proper, Assn, Assn, Proper) --> [Proper], {proper_noun(Proper)}.
 
 % a proper noun is a noun phrase
@@ -641,6 +645,10 @@ averb((X,Y),lose(X,Y),lose, lost, loses, losing, lost, transitive).
 averb((X,Y),continue(X,Y),continue, continued, continues, continuing, continued, transitive).
 averb((X,Y),let(X,Y),let, let, lets, letting, let, transitive).
 averb(X,run(X),run, ran, runs, running, ran, intransitive).
+averb(X,show(X),show, showed, shows, showing, showed, intransitive).
+averb(X,play(X),play, played, plays, playing, played, intransitive).
+averb(X,trace(X),trace, traced, traces, tracing, traced, intransitive).
+averb(X,define(X),define, defined, defines, defining, defined, intransitive).
 averb((X,Y),fill(X,Y),fill, filled, fills, filling, filled, transitive).
 
 %averb((X,Y),LF, Root,V,_,_,_,transitive) :- atom(V), morphit(V,List,Out), check_list(v,List,Out,Num,Root), LF=..[Root,X,Y].
@@ -726,6 +734,7 @@ is_adverb(A) :- atom(A), morphit(A,List,Out), check_list(s,List,Out,Num,Root). %
 % proper nouns 
 % ---------------------------------------------------------------
 proper_noun(Name) :- atom(Name), atom_codes(Name, Codes2), head(Codes2, First), char_type(First,upper), !.
+proper_noun(Name,Unquoted_name) :- atom(Name), atom_codes(Name, Codes2), head(Codes2, First), char_type(First,quote), unquote(Codes2, Codes1),atom_codes(Unquoted_name, Codes1),!.
 
 % ---------------------------------------------------------------
 % nouns
@@ -898,8 +907,8 @@ transform(many(X,Y&Z),[((count(Y,CY)),(count(Z,CZ),(C is CY/CZ, C>0.5)))]).
 transform(most(X,Y&Z),[((count(Y,CY)),(count(Z,CZ),(C is CY/CZ, C>0.8)))]).
 transform(few(X,Y&Z),[((count(Y,CY)),(count(Z,CZ),(C is CY/CZ, C<0.1)))]).
 transform(not(X,Y&Z),[((count(Y,CY)),(count(Z,CZ),(CY=0.0, CZ>0.0)))]).
-transform(A&B,(A,B)).
-transform(A,A).
+transform(A&B,(A,B)) :- !.
+transform(A,A) :- !.
 
 /*
  * NL generation
@@ -913,8 +922,8 @@ show_answer([H|T]) :-
     show_answer(T).
 
 show_answer(Clause) :-
-    generate_nl(Clause),writeln('.'),
-    writeln(Clause).
+    generate_nl(Clause),writeln('.')
+    .%,writeln(Clause).
 
 generate_nl([]) :- !.
 generate_nl(true) :- !.
@@ -1009,19 +1018,26 @@ show_rules(Rule) :-
 % execute the logical form
 
 do_it(LF, RuleBase) :-
-    show_answer(LF),
+    %show_answer(LF),
+    do_it(LF),
     writeln('done.').
+
+do_it(trace('On')) :- assert(tracing('On'):-true).
+do_it(trace('Off')) :- retractall(tracing).
+do_it(define(X)) :- proper_noun(X,Unquoted_name), definition(Unquoted_name).
+do_it(X) :- !, write("Don't know how to "),write(X),nl.
 
 handle_logical_form(question(LF), RuleBase) :-
     transform(LF, Clauses),
-    trace_it(('Proving ',LF,Clauses,'in',RuleBase)),
+    %trace_it(('Proving ',LF,Clauses,'in',RuleBase)),
     prove(Clauses, RuleBase),
-    trace_it(('Proved ',LF,Clauses,'in',RuleBase)),
+    %trace_it(('Proved ',LF,Clauses,'in',RuleBase)),
     show_answer(Clauses).
 
 handle_logical_form(question(LF), RuleBase) :-
+    transform(LF, Clauses),
     write("I can't prove "),
-    show_answer(LF).
+    show_answer(Clauses).
 
 handle_logical_form(statement(LF), RuleBase) :-
     transform(LF, Clauses),
@@ -1067,10 +1083,15 @@ tail_not_mark(A, R, T) :- atom_concat(R, T, A), is_terminal_punc(T),!.
 tail_not_mark(A, R, '') :- A = R.
 
 headtail([H|T], H, T).
+tail([_|T], T).
 head([H|_], H).
 
 capitalize([], []).
 capitalize([H1|T], [H2|T]) :- code_type(H2, to_upper(H1)).
+
+unquote([], []).
+unquote([H1|T], T2) :- char_type(H1,quote), unquote(T,T2).
+unquote([H1|T], [H1|T2]) :- unquote(T,T2).
 
 trim_period([.],[]).
 trim_period([X|R],[X|T]) :- trim_period(R,T).
@@ -1090,24 +1111,22 @@ definitions([]) :- !.
 definitions(H) :- atom(H), definition(H),!.
 definitions([H|T]) :- definition(H), !, definitions(T).
 
-cat(n,noun).
-cat(a,verb).
-cat(a,adjective).
-cat(r,adverb).
-cat(pn,propernoun).
-cat(X,X).
+cat(n,noun) :- !.
+cat(a,verb) :- !.
+cat(a,adjective) :- !.
+cat(r,adverb) :- !.
+cat(pn,proper_noun) :- !.
+cat(v,verb) :- !.
+cat(X,X) :- !.
     
 definition(Word) :-
-    proper(Word),
-    write(Word), write(':'), cat(pn,Cat), writeln(Cat),
-    !.
-    
-definition(Word) :-
-    s(Word,_,_,Category,_,_),
-    write(Word), write(':'), cat(Category,Cat),writeln(Cat),
+    s([Word|_],Number,_,Category,_,_),
+    cat(Category,Cat),
+    write(Word),write('('),write(Cat),write('): '),
     g(Number,Definition),
     writeln(Definition),
-    !.
+    fail.
+definition(Word) :- true;
 
 check_for_missing_vocabulary_words([]).
 check_for_missing_vocabulary_words([H|T]) :-
@@ -1145,7 +1164,7 @@ parse :-
     nl_shell([me('Alexa')]).
 
 nl_shell(RuleBase) :-
-    trace_it(('New shell',RuleBase)),
+    %trace_it(('New shell',RuleBase)),
     write(':'),flush,
     input_to_atom_list(Input),
     headtail(Input, Root, Punctuation),
