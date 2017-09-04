@@ -19,7 +19,8 @@
 
 :-style_check(-singleton).
 
-tracing('On').
+:-assert(tracing('On')).
+:-assert(tracing_parse('On')).
 trace_it(X) :- tracing('On'), writeln(X).
 trace_it(_) :- !.
 
@@ -50,6 +51,7 @@ sentence(question(LF), question(does(VPhr,Object,Object2))) -->
 
 % imperative
 sentence(imperative(LF), imperative(VPhr, Object)) --> {trace_it(imperative)},
+    %preliminaries(Prelims),{trace_it((imperative__preliminaries,Prelims))},
     verb_phrase(X, Assn, VPhr, singular, first, intransitive),{trace_it((imperative__verb_phrase,X, Assn, LF, VPhr, Number, Person))},
     direct_object(X, Assn, LF, Object, Number1, Person1),{trace_it((imperative__direct_object,X, Assn,Object, LF, Number, Person))}.
  
@@ -96,7 +98,13 @@ independent_clause(LF, exist(NPhr)) --> [there, is],
 
 independent_clause(LF, exist(NPhr)) --> [there, are],
     subject(X, Assn, LF, NPhr, plural, Person).
- 
+
+preliminaries(Prelims1&Prelims) --> prelims(Prelims1), preliminaries(Prelims).
+preliminaries(Prelims) --> prelims(Prelims).
+prelims(none) --> [].
+prelims(please) --> [please].
+prelims('Alexa') --> ['Alexa'].
+
 % ------------------------------------------------------------------
 % subject of a sentence
 % ------------------------------------------------------------------ 
@@ -927,18 +935,19 @@ show_answer(Clause) :-
 
 generate_nl([]) :- !.
 generate_nl(true) :- !.
-generate_nl([A]) :- !,
-    write(A).
+generate_nl([A|T]) :- !,
+    write(A),
+    generate_nl(T).
+generate_nl(A) :- var(A), !,
+    A=x,write(A).
 generate_nl(A) :- atom(A), !,
     write(A).
-generate_nl(A) :- var(A), !,
-    write(A).
 generate_nl((A,B)) :- !,
-    write(A),
-    write(B).
+    generate_nl(A),
+    generate_nl(B).
 
 generate_nl((A:-true)) :- !,
-    write(A).
+    generate_nl(A).
 
 generate_nl((A:-B)) :-
     %trace_it(('generate_nl b ',A)),
@@ -987,7 +996,7 @@ generate_nl(A) :-
 
 % arity three - gave(mary,john,X) & X=
 generate_nl(A) :-
-    functor(A, F, 1),
+    functor(A, F, 3),
     A=..[H,Arg1,Arg2,Arg3],
     %trace_it(('generate_nl3 d ',A,H,Arg1,Arg2)),
     generate_nl(Arg1),
@@ -1017,13 +1026,14 @@ show_rules(Rule) :-
 
 % execute the logical form
 
-do_it(LF, RuleBase) :-
-    %show_answer(LF),
-    do_it(LF),
-    writeln('done.').
+do_it(show('Rules'), RuleBase) :- show_rules(RuleBase).
+do_it(LF, RuleBase) :- do_it(LF).
 
 do_it(trace('On')) :- assert(tracing('On'):-true).
-do_it(trace('Off')) :- retractall(tracing).
+do_it(trace('Off')) :- retract(tracing(_)).
+do_it(trace('Parse')) :- assert(tracing_parse('On'):-true).
+do_it(trace('Parseoff')) :- retract(tracing_parse(_)).
+
 do_it(define(X)) :- proper_noun(X,Unquoted_name), definition(Unquoted_name).
 do_it(X) :- !, write("Don't know how to "),write(X),nl.
 
@@ -1047,7 +1057,7 @@ handle_logical_form(statement(LF), RuleBase) :-
 
 handle_logical_form(imperative(LF), RuleBase) :-
     transform(LF, Clauses),
-    do_it(Clauses, RuleBase).
+    do_it(Clauses, RuleBase),!.
 
 /*
  * Support stuff
@@ -1126,10 +1136,10 @@ definition(Word) :-
     g(Number,Definition),
     writeln(Definition),
     fail.
-definition(Word) :- true;
+definition(Word) :- true.
 
-check_for_missing_vocabulary_words([]).
-check_for_missing_vocabulary_words([H|T]) :-
+check_for_missing_vocabulary_words([]) :- !.
+check_for_missing_vocabulary_words([H|T]) :- !,
     check_for_missing_vocabulary_words2(H),
     check_for_missing_vocabulary_words(T).
 
@@ -1174,7 +1184,7 @@ nl_shell(RuleBase) :-
             %s_type(Punctuation, S_type), write(S_type), write(': '), writeln(Root),
             sentence(Logical_form, Parse_form, Root, []),
             write('Logical Form: '),writeln(Logical_form),
-            writeln('Parse Form: '),pp(Parse_form,1),nl,
+            ( tracing_parse('On') -> writeln('Parse Form: '),pp(Parse_form,1),nl; true),
             handle_logical_form(Logical_form, RuleBase),
             get_time(T2),
             Msec is (T2 - T1) * 1000,
