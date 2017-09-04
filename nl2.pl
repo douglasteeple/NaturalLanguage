@@ -1052,10 +1052,10 @@ show_rules(Rule) :-
 do_it(show('Rules'), RuleBase) :- show_rules(RuleBase).
 do_it(LF, RuleBase) :- do_it(LF).
 
-do_it(trace('On')) :- assert(tracing('On'):-true).
-do_it(trace('Off')) :- retract(tracing(_)).
-do_it(trace('Parse')) :- assert(tracing_parse('On'):-true).
-do_it(trace('Parseoff')) :- retract(tracing_parse(_)).
+do_it(trace('On')) :- assert(tracing('On')).
+do_it(trace('Off')) :- retractall(tracing(_)).
+do_it(trace('Parse')) :- assert(tracing_parse('On')).
+do_it(trace('Parseoff')) :- retractall(tracing_parse(_)).
 
 do_it(define(X)) :- proper_noun(X,Unquoted_name), definition(Unquoted_name).
 do_it(X) :- !, write("Don't know how to "),write(X),nl.
