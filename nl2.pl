@@ -30,11 +30,10 @@ trace_it(_) :- !.
 % independent clauses are sentences
 
 % where/what/.. question
-sentence(question(LF), question(Phrase)) -->
-    relative_pronoun(Y, Prop1, rpron(P), Number, Person, Case),{trace_it((relative_pronoun,X, Prop1, LF, Subj, Number, Person))},
-    sense_verb_phrase(X, Prop2, VPhr, Number, Person),{trace_it((sense_verb_phrase,X, Prop2, LF, Subj, Number, Person))},
-    direct_object(X, Y, Prop3, Object, Number, Person),{trace_it((direct_object,X, Prop3, Object, Subj, Number, Person))},
-    {LF=(Prop1&(Y=Prop2)), Phrase=..[P,VPhr,Object]}.
+sentence(question(LF), question(Phrase,VPhr,OPhrase)) -->
+    question_pronoun(X, LF, Phrase, Number, Person, Case),!,{trace_it((question_pronoun,X, Prop1, Phrase, Number, Person, Case))},
+    sense_verb_phrase(Y, Prop2, VPhr, Number, Person1),{trace_it((sense_verb_phrase,Y, Prop2, VPhr, Number, Person1))},
+pred_nominative(A, B, X, OPhrase, Number, Person2),{(nonvar(A)->A=B;true)},{trace_it((pred_nominative,A,B,Object, LF, Number, Person2))}.
 
 % is X a Y?
 sentence(question(Assn2), question(is(VPhr,Object1,Object2))) -->
@@ -50,12 +49,12 @@ sentence(question(LF), question(does(VPhr,Object,Object2))) -->
     indirect_object(Y, Assn2, LF, Object2, Number1, Person1).
 
 % imperative
-sentence(imperative(LF), imperative(VPhr, Object)) --> {trace_it(imperative)},
+sentence(imperative(LF), imperative(VPhr, Object)) -->
     %preliminaries(Prelims),{trace_it((imperative__preliminaries,Prelims))},
     verb_phrase(X, Assn, VPhr, singular, first, intransitive),{trace_it((imperative__verb_phrase,X, Assn, LF, VPhr, Number, Person))},
     direct_object(X, Assn, LF, Object, Number1, Person1),{trace_it((imperative__direct_object,X, Assn,Object, LF, Number, Person))}.
  
-sentence(imperative(LF), imperative(VPhr, Object, Object2)) --> {trace_it(imperative2)},
+sentence(imperative(LF), imperative(VPhr, Object, Object2)) -->
     verb_phrase((X,Y), Assn, VPhr, singular, first, bitransitive),{trace_it((imperative__verb_phrase,X, Assn, LF, VPhr, Number, Person))},
     direct_object(X, Assn, Assn1, Object, Number1, Person1),{trace_it((imperative__direct_object,X, Assn,Object, LF, Number, Person))},
     indirect_object(Y, Assn1, LF, Object2, Number2, Person2),{trace_it((imperative__indirect_object,X, Assn1,Object2, LF, Number, Person))}.
@@ -120,7 +119,7 @@ subject(X, Assn, LF, subj(IVP), singular, third) -->
  % other noun type parts
  %------------------------------------------------------------------
  % a nominative case noun phrase is a predicate nominative
-pred_nominative(X, Assn, LF, dnom(NPhr), Number, Person) --> {trace_it((trying__pred_nominative__noun_phrase,X, Assn, LF, NPhr, Number, Person))},
+pred_nominative(X, Assn, LF, dnom(NPhr), Number, Person) -->
     noun_phrase(X, Assn, LF, NPhr, Number, Person, nominative),{trace_it((pred_nominative__noun_phrase,X, Assn, LF, NPhr, Number, Person))}.
 
  % any adjective phrase is a predicate adjective
@@ -303,14 +302,14 @@ gerund_phrase(X, Assn1&Assn2, gerp(Gerp2,Advphr)) -->
 % ------------------------------------------------------------------
 % a list of proper nouns is a noun phrase
 
-proper_noun_phrase(X, Assn, Assn, Proper) --> proper_noun_phrase2(X, Assn, Assn, Proper1), proper_noun_phrase(X, Assn, Assn, Proper2), {atomic_list_concat([Proper1, Proper2], ' ', Proper)}.
+proper_noun_phrase(X, Assn, Assn1, Proper) --> proper_noun_phrase2(X, Assn, Assn1, Proper1), proper_noun_phrase(X, Assn2, Assn3, Proper2), {atomic_list_concat([Proper1, Proper2], ' ', Proper)}.
 proper_noun_phrase(X, Assn, Assn, Proper) --> proper_noun_phrase2(X, Assn, Assn, Proper).
 
 proper_noun_phrase2(Proper, Assn, Assn, Unquoted) --> [Proper], {proper_noun(Proper,Unquoted)}.
 proper_noun_phrase2(Proper, Assn, Assn, Proper) --> [Proper], {proper_noun(Proper)}.
 
 % a proper noun is a noun phrase
-noun_phrase(X,Assn,Assn,np(head(name(Proper))), singular, Person, Case) --> proper_noun_phrase(X, Assn, Assn, Proper),{trace_it((noun_phrase__proper_noun_phrase,X, Y,Assn, Number, singular, Person, Case))}.
+noun_phrase(X,Assn,Assn,np(head(name(Proper))), singular, Person, Case) --> proper_noun_phrase(X, X, X, Proper),{trace_it((noun_phrase__proper_noun_phrase,X, Assn, Number, singular, Person, Case))}.
 
 % infinitive verb phrase is a noun phrase
 noun_phrase(X,Assn,Assn,np(head(InfPhr)), singular, third, Case) --> inf_verb_phrase(X,Assn,InfPhr).
@@ -325,11 +324,11 @@ noun_phrase(X, Assn, LF, np(Det, NPhr2), Number, third, Case) -->
 
 % noun without determiner
 noun_phrase(X, Assn, Assn, np(NPhr2), Number, third, Case) -->
-    noun_phrase_2(X, Assn, LF, NPhr2, Number),{trace_it((noun_phrase__noun_phrase_2,X, Y,Assn, LF, Assn2, Number, Person))}.
+    noun_phrase_2(X, Assn, LF, NPhr2, Number),{trace_it((noun_phrase__noun_phrase_2,X, Assn, LF, Number))}.
  
 % pronoun is a noun phrase
-noun_phrase(X,Assn,Assn,np(head(NPhr)), Number,Person, Case) -->
-    pronoun(X,Assn, NPhr, Number, Person, Case),{trace_it((noun_phrase_pronoun,X, Y,Assn, LF, Assn2, Number, Person))}.
+noun_phrase(X,Assn,Assn,np(head(NPhr)), Number,Person, Case) --> {trace_it((trying__noun_phrase_pronoun,X, Assn, Number, Person,Case))},
+    pronoun(X,Assn, NPhr, Number, Person, Case),{trace_it((noun_phrase_pronoun,X, Assn, NPhr, Number, Person,Case))}.
  
 noun_phrase(X,Assn,LF, np(NPhr1, conj(Conj), NPhr2), plural, Person, Case) -->
     noun_phrase_2(X,Assn,LF1, NPhr1, Number),
@@ -340,12 +339,12 @@ noun_phrase(X,Assn,LF, np(NPhr1, conj(Conj), NPhr2), plural, Person, Case) -->
 
 % noun with adjective in front
 noun_phrase_2(X,Assn,Assn1&Assn2,*(NPhr2, mods(Adj)), Number) -->
-    adjective_phrase(X,Assn1,Adj),{trace_it((noun_phrase_2__adjective_phrase,X, Y,Assn, LF, Assn2, Number, Person))},
-    noun_phrase_3(X, Assn, Assn2, NPhr2, Number),{trace_it((noun_phrase_2__noun_phrase_3,X, Y,Assn, LF, Assn2, Number, Person))}.
+    adjective_phrase(X,Assn1,Adj),{trace_it((noun_phrase_2__adjective_phrase,X, Y,Assn1, Adj, Number, Person))},
+    noun_phrase_3(X, Assn, Assn2, NPhr2, Number),{trace_it((noun_phrase_2__noun_phrase_3,X, Assn, LF, NPhr3, Number, Person))}.
  
 % A noun without adjective
 noun_phrase_2(X,Assn,LF,NPhr3, Number) -->
-    noun_phrase_3(X,Assn,LF,NPhr3, Number),{trace_it((noun_phrase_2__noun_phrase_3,X, Y,Assn, LF, Assn2, Number, Person))}.
+    noun_phrase_3(X,Assn,LF,NPhr3, Number),{trace_it((noun_phrase_2__noun_phrase_3,X, Y,Assn, LF, NPhr3, Number, Person))}.
  
 % A noun with prepositional phrase after
 noun_phrase_3(X, Assn, LF1&LF2, *(head(N),Pmods), Number) -->
@@ -572,7 +571,9 @@ preposition(Prop,LF,prep(Prep)) --> [Prep], {is_preposition(Prep), LF=..[Prep,Pr
 pronoun(X, LF, pron(P), Number, Person, Case) --> [P], {is_pronoun(P, Number, Person, Case), LF=..[P,X]}.
  
 relative_pronoun(X,LF,rpron(P), Number, Person, Case) --> [P], {is_rel_pronoun(P, Number, Person, Case), LF=..[P,X]}.
- 
+
+question_pronoun(X, LF, qpron(P), Number, Person, Case) --> [P], {is_question_pronoun(P, Number, Person, Case), LF=..[P,X]}.
+
 subordconj(Prop,LF,subconj(Conj)) --> [Conj], {is_subconj(Conj), LF=..[Conj,Prop]}.
  
 auxiliary(Prop,LF,aux(Auxv)) --> [Auxv], {auxmodal(Auxv), LF=..[Auxv,Prop]}.
@@ -604,14 +605,14 @@ is_determiner(X,Prop,Assn,all(X,(Prop ==> Assn)),any, _).
 % ---------------------------------------------------------------
 % the verb to be; copula
 % ---------------------------------------------------------------
-beverb(X, X, am, singular, first, present).
-beverb(X, X, are, singular, second, present).
-beverb(X, X, is, singular, third, present).
-beverb(X, X, was, singular, first, past).
-beverb(X, X, vere, singular, second, past).
-beverb(X, X, was, singular, third, past).
-beverb(X, X, are, plural, Person, present).
-beverb(X, X, were, plural, Person, past).
+beverb(X, be(X), am, singular, first, present).
+beverb(X, be(X), are, singular, second, present).
+beverb(X, be(X), is, singular, third, present).
+beverb(X, be(X), was, singular, first, past).
+beverb(X, be(X), vere, singular, second, past).
+beverb(X, be(X), was, singular, third, past).
+beverb(X, be(X), are, plural, Person, present).
+beverb(X, be(X), were, plural, Person, past).
 
 % ---------------------------------------------------------------
 % other verbs
@@ -794,13 +795,18 @@ is_pronoun(his, singular, third, possessive).
 is_pronoun(hers, singular, third, possessive). 
 is_pronoun(its, singular, third, possessive). 
 is_pronoun(ours, plural, first, possessive).
-is_pronoun(theirs, plural, third, possessive). 
-%is_pronoun(who, Number, Person, nominative).
-%is_pronoun(whose, Number, Person, possessive).
-%is_pronoun(whom, Number, Person, objective).
+is_pronoun(theirs, plural, third, possessive).
+
+is_question_pronoun(who, singular, third, nominative).
+is_question_pronoun(what, singular, third, nominative).
+is_question_pronoun(where, singular, third, nominative).
+is_question_pronoun(when, singular, third, nominative).
+is_question_pronoun(how, singular, third, nominative).
+is_question_pronoun(whose, Number, Person, possessive).
+is_question_pronoun(whom, Number, Person, objective).
  
 is_rel_pronoun(who, Number, third, nominative).
-is_rel_pronoun(whom, Numbir, third, objective). 
+is_rel_pronoun(whom, Number, third, objective).
 is_rel_pronoun(whose, Number, Person, possessive). 
 is_rel_pronoun(what, Number, third, Case). 
 is_rel_pronoun(whatever, Number, third, Case).
@@ -890,6 +896,23 @@ prove(A,RB) :-
     %trace_it(('Prove ',A,RB)),
     find_clause(A,RB),
     true.%trace_it(('Found ',A,'in',RB)).
+
+prove(who(A),RB) :-
+    %trace_it(('Prove ',A,RB)),
+    atom(A),
+    find_clause(C,RB),
+    functor(C, F, 1),
+    C=..[F|[A]],
+    prove(C, RB),
+    fail.%trace_it(('Found ',A,'in',RB)).
+
+prove(who(A),RB) :-
+    %trace_it(('Prove ',A,RB)),
+    functor(A, W, 1),
+    prove(A,RB),
+    fail.%trace_it(('Found ',A,'in',RB)).
+
+prove(who(A),RB) :- !,true.
 
 prove(_,_) :- !,fail.
 
@@ -1182,7 +1205,7 @@ nl_shell(RuleBase) :-
    ( Root == [q] -> halt;
        ( % if
             %s_type(Punctuation, S_type), write(S_type), write(': '), writeln(Root),
-            sentence(Logical_form, Parse_form, Root, []),
+            sentence(Logical_form, Parse_form, Root, []), !,
             write('Logical Form: '),writeln(Logical_form),
             ( tracing_parse('On') -> writeln('Parse Form: '),pp(Parse_form,1),nl; true),
             handle_logical_form(Logical_form, RuleBase),
