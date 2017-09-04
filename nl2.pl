@@ -535,8 +535,10 @@ be_verb_phrase_2(X, past(LF1&LF2), *(head(past(root(be))),mods(Adv1,Adv2)), Numb
 %
 % do / does
 %
-does_verb_phrase(X, do(X), head(root(do)), singular, first) --> [does].
-does_verb_phrase(X, do(X), head(root(do)), plural, third) --> [do].
+does_verb_phrase(X, do(X), head(root(do)), Number, Person) --> [V], {doverb(V, Number, Person)}.
+doverb(does, singular, first).
+doverb(do, plural, third).
+doverb(did, _, _).
 % -------------------------------------
 % terminal rules
 % -------------------------------------
@@ -774,9 +776,9 @@ is_pronoun(hers, singular, third, possessive).
 is_pronoun(its, singular, third, possessive). 
 is_pronoun(ours, plural, first, possessive).
 is_pronoun(theirs, plural, third, possessive). 
-is_pronoun(who, Number, Person, nominative). 
-is_pronoun(whose, Number, Person, possessive). 
-is_pronoun(whom, Number, Person, objective).
+%is_pronoun(who, Number, Person, nominative).
+%is_pronoun(whose, Number, Person, possessive).
+%is_pronoun(whom, Number, Person, objective).
  
 is_rel_pronoun(who, Number, third, nominative).
 is_rel_pronoun(whom, Numbir, third, objective). 
@@ -841,19 +843,40 @@ isadictword(PartOfSpeech,[Root,_,_,PartOfSpeech],Root).
  * Prover
  */
 
-prove(true,RB).
-prove((A,B),RB) :-
-    prove(A,RB), prove(B,RB).
+prove(true,RB) :-
+    %trace_it(('true',RB)),
+    true.
 
-prove(A,RB) :-
-    find_clause((A:-B),RB),
+prove(A,[A]) :-
+    %trace_it(('Fact',A)),
+    true.
+
+prove((A,B),RB) :-
+    %trace_it(('Prove ',A,B,RB)),
+    prove(A,RB),
     prove(B,RB).
 
-find_clause(C,[R|_]) :-
-    copy_term(C,R).
+prove(A,RB) :-
+    %trace_it(('Prove ',A,RB)),
+    find_clause((A:-B),RB),
+    %trace_it(('Found ',A,':-',B)),
+    prove(B,RB).
 
-find_clause(C,[R|Rs]) :-
-    find_clause(C,Rs).
+prove(A,RB) :-
+    %trace_it(('Prove ',A,RB)),
+    find_clause(A,RB).%,
+    %trace_it(('Found ',A,'in',RB)).
+
+find_clause(C,(C:-B)) :-
+    true.%trace_it(('find_clause a ',C)).
+find_clause(C,C) :-
+    true.%trace_it(('find_clause aa ',C)).
+find_clause(C,[Head|_]) :-
+    %trace_it(('find_clause b ',C)),
+    find_clause(C,Head).
+find_clause(C,[_|Tail]) :-
+    %trace_it(('find_clause c ',C,' rest ',Tail)),
+    find_clause(C,Tail).
 
 copy_element(X,Ys) :-
     element(X1,Ys),
@@ -864,13 +887,14 @@ transform((A,B),[(A:-true)|Rest]) :- !,
 
 transform(all(X,Y==>Z),[(Z:-Y)]).
 transform(exist(X,Y==>Z),[((Y:-true),(Z:-true))]).
+transform(exist(X,Y),[Y]).
 transform(exist(X,Y&Z),[((Y:-true),(Z:-true))]).
 transform(some(X,Y&Z),[((count(Y,CY)),(count(Z,CZ),(C is CY/CZ, C>0.1)))]).
 transform(many(X,Y&Z),[((count(Y,CY)),(count(Z,CZ),(C is CY/CZ, C>0.5)))]).
 transform(most(X,Y&Z),[((count(Y,CY)),(count(Z,CZ),(C is CY/CZ, C>0.8)))]).
 transform(few(X,Y&Z),[((count(Y,CY)),(count(Z,CZ),(C is CY/CZ, C<0.1)))]).
 transform(not(X,Y&Z),[((count(Y,CY)),(count(Z,CZ),(CY=0.0, CZ>0.0)))]).
-transform(A,[(A:-true)]).
+transform(A,A).
 
 /*
  * NL generation
@@ -884,30 +908,45 @@ show_answer([H|T]) :-
     show_answer(T).
 
 show_answer(Clause) :-
-    %generate_nl(Clause,Eng),
-    %writeln(Eng),
+    generate_nl(Clause),writeln('.'),
     writeln(Clause).
 
-generate_nl((A:-true), AA) :-
-    generate_nl(A,AA).
+generate_nl([]) :- !.
+generate_nl(true) :- !.
+generate_nl([A]) :- !,
+    write(A).
+generate_nl(A) :- atom(A), !,
+    write(A).
+generate_nl(A) :- var(A), !,
+    write(A).
+generate_nl((A,B)) :- !,
+    write(A),
+    write(B).
 
-generate_nl((A:-B), [AA,' if ',BA]) :-
-    generate_nl(B,BA),
-    generate_nl(A,AA).
+generate_nl((A:-true)) :- !,
+    write(A).
 
-generate_nl(A, [HA,' is a ',TA]) :-
+generate_nl((A:-B)) :-
+    %trace_it(('generate_nl b ',A)),
+    generate_nl(A),
+    generate_nl(' if '),
+    %trace_it(('generate_nl c ',B)),
+    generate_nl(B).
+
+generate_nl(A) :-
     functor(A, F, N),
     A=..[H|T],
-    generate_nl(H,HA),
-    generate_nl(T,TA).
+    %trace_it(('generate_nl d ',A,H,T)),
+    generate_nl(T),
+    generate_nl(' is a '),
+    %trace_it(('generate_nl d2 ',A,H,T)),
+    generate_nl(H).
+    %trace_it(('generate_nl d3 ',A,H,T)).
 
-generate_nl([H|T], HH) :-
-    generate_nl(H, HH),
-    generate_nl(T, TT).
-
-generate_nl([],[]).
-
-generate_nl(A,A) :- atom(A).
+generate_nl([H|T]) :-
+    trace_it(('generate_nl e ',H,T)),
+    generate_nl(H),
+    generate_nl(T).
 
 % show the rules in the Rule Base in English
 show_rules([]).
@@ -925,19 +964,21 @@ do_it(LF, RuleBase) :-
     writeln('done.').
 
 handle_logical_form(question(LF), RuleBase) :-
-write('Proving '),writeln(LF),
-    prove(LF, RuleBase),
-write('Proved '),writeln(LF),
-    show_answer(LF).
+    transform(LF, Clauses),!,
+    trace_it(('Proving ',LF,Clauses,'in',RuleBase)),
+    prove(Clauses, RuleBase),
+    trace_it(('Proved ',LF,Clauses,'in',RuleBase)),
+    show_answer(Clauses).
 
 handle_logical_form(question(LF), RuleBase) :-
-write('cant prove '),
+    write("I can't prove "),
     show_answer(LF).
 
 handle_logical_form(statement(LF), RuleBase) :-
     transform(LF, Clauses),
     show_answer(Clauses),
-    nl_shell([LF|RuleBase]).
+    %trace_it(('Adding',Clauses,' to ',RuleBase)),
+    nl_shell([Clauses|RuleBase]).
 
 handle_logical_form(imperative(LF), RuleBase) :-
     transform(LF, Clauses),
@@ -990,7 +1031,8 @@ nspaces(N) :- N > 0, write(' '), N1 is N - 1, nspaces(N1).
 nspaces(_).
 
 pp(X,0) :- writeln(X).
-pp(X,NN) :- functor(X, F, N), !, nspaces(NN), writeln(F), NN1 is NN + 1, nspaces(NN1), ppa(X,1,N,NN1).
+pp(X,_) :- var(X).
+pp(X,NN) :- nonvar(X), functor(X, F, N), !, nspaces(NN), writeln(F), NN1 is NN + 1, nspaces(NN1), ppa(X,1,N,NN1).
 pp(X,NN) :- nspaces(NN), writeln(X).
 ppa(X,N,T,NN) :- N =< T, !, nspaces(NN), arg(N,X,A), pp(A,NN), N1 is N + 1, NN1 is NN + 1, ppa(X,N1,T,NN1).
 ppa(_,_,_,_).
@@ -1024,6 +1066,7 @@ check_for_missing_vocabulary_words([H|T]) :-
     check_for_missing_vocabulary_words(T).
 
 check_for_missing_vocabulary_words2(Word) :-
+    proper_noun(Word);
     s(Word,_,_,_,_,_);
     is_preposition(Word);
     is_subconj(Word);
@@ -1032,21 +1075,28 @@ check_for_missing_vocabulary_words2(Word) :-
     is_common_noun(Word,_);
     is_adverb(Word);
     is_adjective(Word);
-    averb(Word,_,_, _, _, _, _, _);
+    averb(_,_,Word, _, _, _, _, _);
+    averb(_,_,_, Word, _, _, _, _);
+    averb(_,_,_, _, Word, _, _, _);
+    averb(_,_,_, _, _, Word, _, _);
+    averb(_,_,_, _, _, _, Word, _);
+    beverb(_, _, Word, _, _, _);
+    doverb(Word, _, _);
     is_determiner(_,_,_,_,Word, _).
 
 
 check_for_missing_vocabulary_words2(Word) :-
-    write("I can't find the word '"),write(Word),writeln("'").
+    write("I don't know the word '"),write(Word),writeln("'.").
 
 /*
  * Main parse entry point
 */
 
 parse :-
-    nl_shell(RuleBase).
+    nl_shell([]).
 
 nl_shell(RuleBase) :-
+    trace_it(('New shell',RuleBase)),
     write(':'),flush,
     input_to_atom_list(Input),
     headtail(Input, Root, Punctuation),
