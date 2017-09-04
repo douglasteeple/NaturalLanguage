@@ -1,7 +1,9 @@
 #! /Applications/SWI-Prolog.app/Contents/MacOS/swipl
 
 /*
- * Adapted from Gurney et al.
+ *
+ * Adapted from Gurney et al., Pereira and Warren., McCord, Schlachter, Witzig, Covington.
+ *
  */
 
 :- op(100,xfy,'&').
@@ -1011,7 +1013,7 @@ do_it(LF, RuleBase) :-
     writeln('done.').
 
 handle_logical_form(question(LF), RuleBase) :-
-    transform(LF, Clauses), !,
+    transform(LF, Clauses),
     trace_it(('Proving ',LF,Clauses,'in',RuleBase)),
     prove(Clauses, RuleBase),
     trace_it(('Proved ',LF,Clauses,'in',RuleBase)),
