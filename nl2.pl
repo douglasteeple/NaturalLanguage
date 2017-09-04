@@ -285,7 +285,8 @@ participial_phrase(X,Assn1&Assn2,partphr(PrtPhr, Advphr)) -->
 gerund(X, Assn, ger(Phrase), Type) -->
     [Part], 
     {averb(X, Assn, Root, Past, SingThrd, Part, PastPart, Type)},
-    Phrase=..[Part,root(Root)].
+    {trace_it('Grammar', (gerund__averb,Part, X, Assn, Root,Number, singular, Person, Case))},
+    {Phrase=..[Part,root(Root)]}.
  
 gerund_phrase_2(X, LF, gerp(Part, NPhr)) -->
     gerund(X, Assn, Part, transitive),
@@ -885,39 +886,44 @@ prove(A=A,_) :- !,
     true.
 
 prove((A,B),RB) :-
-    trace_it('Prover', ('Prove ',B,RB)),
+    trace_it('Prover', ('Prove',B,RB)),
     prove(B,RB),
-    trace_it('Prover', ('Prove ',A,RB)),
+    trace_it('Prover', ('Prove',A,RB)),
     prove(A,RB).
 
 prove(A,RB) :-
-    trace_it('Prover', ('Prove ',A,RB)),
+    trace_it('Prover', ('Prove',A,RB)),
     find_clause((A:-B),RB),
-    trace_it('Prover', ('Proved ',A,':-',B)),
+    trace_it('Prover', ('Proved',A,':-',B)),
     prove(B,RB).
 
 prove(A,RB) :-
-    trace_it('Prover', ('Prove ',A,RB)),
+    trace_it('Prover', ('Prove',A,RB)),
     find_clause(A,RB),
-    trace_it('Prover', ('Proved ',A,'in',RB)).
+    trace_it('Prover', ('Proved',A,'in',RB)).
 
 prove(who(A),RB) :-
-    trace_it('Prover', ('Prove ',A,RB)),
+    trace_it('Prover', ('Prove',A,RB)),
     atom(A),
     find_clause(C,RB),
     functor(C, F, 1),
     C=..[F|[A]],
-    trace_it('Prover', ('Prove ',C,RB)),
+    trace_it('Prover', ('Prove',C,RB)),
     prove(C, RB),
-    trace_it('Prover', ('Proved ',C,'in',RB)),
+    trace_it('Prover', ('Proved',C,'in',RB)),
     fail.
 
 prove(who(A),RB) :-
-    trace_it('Prover', ('Prove ',A,RB)),
+    trace_it('Prover', ('Prove',A,RB)),
     functor(A, W, 1),
     prove(A,RB),
-    trace_it('Prover', ('Proved ',A,'in',RB)),
-    fail.
+    trace_it('Prover', ('Proved',A,'in',RB)).
+
+prove(what(A),RB) :-
+    trace_it('Prover', ('Prove',A,RB)),
+    functor(A, W, 1),
+    prove(A,RB),
+    trace_it('Prover', ('Proved',A,'in',RB)).
 
 prove(who(you(A)),RB) :- !,
     prove(me(A), RB).
@@ -926,6 +932,7 @@ prove(who(i(A)),RB) :- !,
     prove(i(A), RB).
 
 prove(who(A),RB) :- !, true.
+prove(what(A),RB) :- !, true.
 
 prove(_,_) :- !,fail.
 
@@ -988,6 +995,9 @@ generate_nl((A:-true)) :- !,
 generate_nl(who(A)) :- !,
     generate_nl(A).
 
+generate_nl(what(A)) :- !,
+    generate_nl(A).
+
 generate_nl(you(A)) :- atom(A), !,
     generate_nl('I am '),
     generate_nl(A).
@@ -1003,10 +1013,22 @@ generate_nl((A:-B)) :-
     trace_it('English', ('generate_nl c ',B)),
     generate_nl(B).
 
+% arity one - play('Beatles')
+generate_nl(A) :-
+    functor(A, F, 1),
+    A=..[H|Arg],
+    averb(_,_,H, _, _, NewH, _, _),
+    trace_it('English', ('generate_nl1 d ',A,H,Arg)),
+    generate_nl(Arg),
+    generate_nl(' is '),
+    trace_it('English', ('generate_nl1 d2 ',A,H,Arg)),
+    generate_nl(NewH).
+
 % arity one - man('John')
 generate_nl(A) :-
     functor(A, F, 1),
     A=..[H|Arg],
+    is_common_noun(H,_),
     trace_it('English', ('generate_nl1 d ',A,H,Arg)),
     generate_nl(Arg),
     generate_nl(' is a '),
@@ -1074,19 +1096,21 @@ show_rules(Rule) :-
 % execute the logical form
 
 do_it(show('Rules'), RuleBase) :- show_rules(RuleBase).
+do_it(play(X), RuleBase) :- write('Playing '), writeln(X), delete(RuleBase,play(_),NewRuleBase),nl_shell([play(X)|NewRuleBase]).
 do_it(LF, RuleBase) :- do_it(LF).
 
 do_it(trace('Off')) :- retractall(tracing(_)).
 do_it(trace(What))  :- assert(tracing(What)).
 
 do_it(define(X)) :- proper_noun(X,Unquoted_name), definition(Unquoted_name).
+
 do_it(X) :- !, write("Don't know how to "),write(X),nl.
 
 handle_logical_form(question(LF), RuleBase) :-
     transform(LF, Clauses),
-    trace_it('Prover', ('Proving ',LF,Clauses,'in',RuleBase)),
+    trace_it('Prover', ('Handling ',LF,Clauses,'in',RuleBase)),
     prove(Clauses, RuleBase),
-    trace_it('Prover', ('Proved ',LF,Clauses,'in',RuleBase)),
+    trace_it('Prover', ('Handled ',LF,Clauses,'in',RuleBase)),
     show_answer(Clauses).
 
 handle_logical_form(question(LF), RuleBase) :-
