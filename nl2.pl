@@ -906,27 +906,26 @@ prove(A,RB) :-
     trace_it('Prover', ('Proved',A,'in',RB)).
 
 prove(who(A),RB) :-
-    trace_it('Prover', ('Prove who',A,RB)),
+    trace_it('Prover', ('Prove who a',A,RB)),
     atom(A),
     find_clause(C,RB),
     functor(C, F, 1),
     C=..[F|[A]],
-    trace_it('Prover', ('Prove',C,RB)),
+    trace_it('Prover', ('Prove who2',C,RB)),
     prove(C, RB),
-    trace_it('Prover', ('Proved',C,'in',RB)),
-    fail.
+    trace_it('Prover', ('Proved who',C,'in',RB)).
 
 prove(who(A),RB) :-
-    trace_it('Prover', ('Prove who',A,RB)),
+    trace_it('Prover', ('Prove who b',A,RB)),
     functor(A, W, 1),
     prove(A,RB),
-    trace_it('Prover', ('Proved',A,'in',RB)).
+    trace_it('Prover', ('Proved who',A,'in',RB)).
 
 prove(what(A),RB) :-
     trace_it('Prover', ('Prove what',A,RB)),
     functor(A, W, 1),
     prove(A,RB),
-    trace_it('Prover', ('Proved',A,'in',RB)).
+    trace_it('Prover', ('Proved what',A,'in',RB)).
 
 prove(who(A),RB) :- !, true.
 prove(what(A),RB) :- !, true.
@@ -947,11 +946,8 @@ copy_term((A:-B),CCC),
     trace_it('Finder', ('find_clause binding ',CC,(A:-B))),
     (CC=CCC),
     trace_it('Finder', ('find_clause bound ',CC,A)).
-find_clause(C,CC) :-
-    copy_term(C,CC),
-    copy_term(C,CCC),
-    CC=CCC,
-    trace_it('Finder', ('find_clause term ',C,CC)).
+find_clause(C,C) :-
+    trace_it('Finder', ('find_clause term ')).
 
 transform((A,B),[(A:-true)|Rest]) :- !,
     transform(B,Rest).
