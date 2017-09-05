@@ -56,7 +56,8 @@ sentence(question(LF), question(does(VPhr,Object,Object2))) -->
 sentence(imperative(LF), imperative(Prelims, VPhr, Object)) -->
     preliminaries(X, LF, Prelims),{trace_it('Grammar', (imperative__preliminaries,X,Prelims,LF))},
     verb_phrase(Y, Assn, VPhr, singular, first, intransitive),{trace_it('Grammar', (imperative__verb_phrase,Y, Assn, VPhr, singular, first))},
-    direct_object(Y, X, Assn, Object, Number1, Person1),{trace_it('Grammar', (imperative__direct_object,Y, Assn, Assn1, Object, LF, Number1, Person1))}.
+    direct_object(Y, X, Assn, Object, Number1, Person1),{trace_it('Grammar', (imperative__direct_object,Y, Assn, Assn1, Object, LF, Number1, Person1))},
+    {(var(LF)->LF=Assn;true)}.
 
 sentence(imperative(LF), imperative(VPhr, Object, Object2)) -->
     verb_phrase((X,Y), Assn, VPhr, singular, first, bitransitive),{trace_it('Grammar', (imperative__verb_phrase,X, Assn, LF, VPhr, Number, Person))},
