@@ -1,4 +1,4 @@
-#! /Applications/SWI-Prolog.app/Contents/MacOS/swipl
+#! /Applications/SWI-Prolog.app/Contents/MacOS/swipl -q
 
 /*
  *
@@ -35,7 +35,7 @@ trace_it(_, _) :- !.
 
 % where/what/.. question
 sentence(question(LF), question(Phrase,VPhr,OPhr)) -->
-    question_pronoun(X, LF, Phrase, Number, Person, Case),!,{trace_it('Grammar', (question_pronoun,X, Prop1, Phrase, Number, Person, Case))},
+    wh_pronoun(X, LF, Phrase, Number, Person, Case),!,{trace_it('Grammar', (wh_pronoun,X, Prop1, Phrase, Number, Person, Case))},
     sense_verb_phrase(Y, Prop2, VPhr, Number, Person1),{trace_it('Grammar', (sense_verb_phrase,Y, Prop2, VPhr, Number, Person1))},
 pred_nominative(A, B, X, OPhr, Number, Person2),{(nonvar(A)->A=B;true)},{trace_it('Grammar', (pred_nominative,A,B,OPhr, LF, Number, Person2))}.
 
@@ -339,7 +339,7 @@ noun_phrase(X,Assn,LF, np(NPhr1, conj(Conj), NPhr2), plural, Person, Case) -->
     [Conj],
     {conjunction(Conj)}, 
     noun_phrase_2(X,Assn,LF2, NPhr2, Number),
-    LF=..[Conj,LF1,LF2].
+    {LF=..[Conj,LF1,LF2]}.
 
 % noun with adjective in front
 noun_phrase_2(X,Assn,Assn1&Assn2,*(NPhr2, mods(Adj)), Number) -->
@@ -576,7 +576,7 @@ pronoun(X, LF, pron(P), Number, Person, Case) --> [P], {is_pronoun(P, Number, Pe
  
 relative_pronoun(X,LF,rpron(P), Number, Person, Case) --> [P], {is_rel_pronoun(P, Number, Person, Case), LF=..[P,X]}.
 
-question_pronoun(X, LF, qpron(P), Number, Person, Case) --> [P], {is_question_pronoun(P, Number, Person, Case), LF=..[P,X]}.
+wh_pronoun(X, LF, qpron(P), Number, Person, Case) --> [P], {is_wh_pronoun(P, Number, Person, Case), LF=..[P,X]}.
 
 subordconj(Prop,LF,subconj(Conj)) --> [Conj], {is_subconj(Conj), LF=..[Conj,Prop]}.
  
@@ -662,6 +662,7 @@ averb(X,show(X),show, showed, shows, showing, showed, intransitive).
 averb(X,play(X),play, played, plays, playing, played, intransitive).
 averb(X,trace(X),trace, traced, traces, tracing, traced, intransitive).
 averb(X,define(X),define, defined, defines, defining, defined, intransitive).
+averb(X,save(X),save, saved, saves, saving, saved, intransitive).
 averb((X,Y),fill(X,Y),fill, filled, fills, filling, filled, transitive).
 
 %averb((X,Y),LF, Root,V,_,_,_,transitive) :- atom(V), morphit(V,List,Out), check_list(v,List,Out,Num,Root), LF=..[Root,X,Y].
@@ -801,13 +802,13 @@ is_pronoun(its, singular, third, possessive).
 is_pronoun(ours, plural, first, possessive).
 is_pronoun(theirs, plural, third, possessive).
 
-is_question_pronoun(who, singular, third, nominative).
-is_question_pronoun(what, singular, third, nominative).
-is_question_pronoun(where, singular, third, nominative).
-is_question_pronoun(when, singular, third, nominative).
-is_question_pronoun(how, singular, third, nominative).
-is_question_pronoun(whose, Number, Person, possessive).
-is_question_pronoun(whom, Number, Person, objective).
+is_wh_pronoun(who, singular, third, nominative).
+is_wh_pronoun(what, singular, third, nominative).
+is_wh_pronoun(where, singular, third, nominative).
+is_wh_pronoun(when, singular, third, nominative).
+is_wh_pronoun(how, singular, third, nominative).
+is_wh_pronoun(whose, Number, Person, possessive).
+is_wh_pronoun(whom, Number, Person, objective).
  
 is_rel_pronoun(who, Number, third, nominative).
 is_rel_pronoun(whom, Number, third, objective).
@@ -854,7 +855,9 @@ is_subconj(unless).
 is_subconj(where).
 
 % ---------------------------------------------------------------------
-    
+% morphology and checking that a morphed word is actually a word.
+% ---------------------------------------------------------------------
+
 morphit(X,List,Out) :- morph_atoms_bag(X, List), morph_bag_lookup(List, Out), nonvar(Out),!.
     
 check_list(_,[],[],_,_) :- fail.
@@ -885,24 +888,25 @@ prove(A=A,_) :- !,
     true.
 
 prove((A,B),RB) :-
-    trace_it('Prover', ('Prove',B,RB)),
+    trace_it('Prover', ('Prove A,B',B,RB)),
     prove(B,RB),
     trace_it('Prover', ('Prove',A,RB)),
     prove(A,RB).
 
 prove(A,RB) :-
-    trace_it('Prover', ('Prove',A,RB)),
+    trace_it('Prover', ('Prove :-',A,RB)),
     find_clause((A:-B),RB),
-    trace_it('Prover', ('Proved',A,':-',B)),
-    prove(B,RB).
+    trace_it('Prover', ('Found',A,':-',B)),
+    prove(B,RB),
+    trace_it('Prover', ('Proved',B,':-',B)).
 
 prove(A,RB) :-
-    trace_it('Prover', ('Prove',A,RB)),
+    trace_it('Prover', ('Prove term',A,RB)),
     find_clause(A,RB),
     trace_it('Prover', ('Proved',A,'in',RB)).
 
 prove(who(A),RB) :-
-    trace_it('Prover', ('Prove',A,RB)),
+    trace_it('Prover', ('Prove who',A,RB)),
     atom(A),
     find_clause(C,RB),
     functor(C, F, 1),
@@ -913,38 +917,42 @@ prove(who(A),RB) :-
     fail.
 
 prove(who(A),RB) :-
-    trace_it('Prover', ('Prove',A,RB)),
+    trace_it('Prover', ('Prove who',A,RB)),
     functor(A, W, 1),
     prove(A,RB),
     trace_it('Prover', ('Proved',A,'in',RB)).
 
 prove(what(A),RB) :-
-    trace_it('Prover', ('Prove',A,RB)),
+    trace_it('Prover', ('Prove what',A,RB)),
     functor(A, W, 1),
     prove(A,RB),
     trace_it('Prover', ('Proved',A,'in',RB)).
-
-prove(who(you(A)),RB) :- !,
-    prove(me(A), RB).
-
-prove(who(i(A)),RB) :- !,
-    prove(i(A), RB).
 
 prove(who(A),RB) :- !, true.
 prove(what(A),RB) :- !, true.
 
 prove(_,_) :- !,fail.
 
-find_clause(C,(C:-B)) :-
-    trace_it('Finder', ('find_clause a ',C)).
-find_clause(C,C) :-
-    trace_it('Finder', ('find_clause aa ',C)).
-find_clause(C,[Head|_]) :-
-    trace_it('Finder', ('find_clause b ',C)),
+find_clause(_,[]) :- !, fail.
+find_clause(C,[Head|Tail]) :-
+    trace_it('Finder', ('find_clause head ',C,Head)),
     find_clause(C,Head).
 find_clause(C,[_|Tail]) :-
-    trace_it('Finder', ('find_clause c ',C,' rest ',Tail)),
+    trace_it('Finder', ('find_clause tail ',C,Tail)),
     find_clause(C,Tail).
+find_clause(C,(A:-B)) :-
+    trace_it('Finder', ('finding_clause :- ',C,(A:-B))),
+copy_term(C,CC),
+copy_term((A:-B),CCC),
+    trace_it('Finder', ('find_clause binding ',CC,(A:-B))),
+    eq(CC,CCC),
+    trace_it('Finder', ('find_clause bound ',CC,A)).
+find_clause(C,CC) :-
+    copy_term(C,CC),
+    copy_term(C,CCC),
+    CC=CCC,
+    trace_it('Finder', ('find_clause term ',C,CC)).
+eq(X,X).
 
 transform((A,B),[(A:-true)|Rest]) :- !,
     transform(B,Rest).
@@ -972,19 +980,21 @@ show_answer([H|T]) :-
     show_answer(H),
     show_answer(T).
 
-show_answer(Clause) :-
-    generate_nl(Clause),writeln('.')
-    .%,writeln(Clause).
+show_answer(Clause, english) :- !,
+    generate_nl(Clause),writeln('.').
 
-generate_nl([]) :- !.
-generate_nl(true) :- !.
+show_answer(Clause, _) :-
+    writeln(Clause).
+
+generate_nl([]).
+generate_nl(true).
 generate_nl([A|T]) :- !,
-    write(A),
+    generate_nl(A),
     generate_nl(T).
-generate_nl(A) :- var(A), !,
-    A=x,write(A).
 generate_nl(A) :- atom(A), !,
-    write(A).
+    copy_term(A,AA),
+    numbervars(AA),
+    write(AA).
 generate_nl((A,B)) :- !,
     generate_nl(A),
     generate_nl(B).
@@ -1091,19 +1101,36 @@ show_rules([H|T]) :-
     show_rules(T).
 show_rules(Rule) :-
     transform(Rule, Clauses),
-    show_answer(Clauses).
+    show_answer(Clauses, english).
+
+save_rules(FileName, RuleBase) :-
+    tell(FileName),
+    save_rules(RuleBase),
+    told.
+
+save_rules([]).
+save_rules([H|T]) :-
+    save_rules(H),
+    save_rules(T).
+save_rules(Rule) :-
+    print(Rule),writeln('.').
+
+read_rules(FileName, RuleBase) :-
+    exists_file(FileName),
+    read_file_to_terms(FileName, RuleBase, []),
+    show_rules(RuleBase).
+read_rules(_, _).
 
 % execute the logical form
 
 do_it(show('Rules'), RuleBase) :- show_rules(RuleBase).
+do_it(save('Rules'), RuleBase) :- save_rules('nl2.db', RuleBase).
 do_it(play(X), RuleBase) :- write('Playing '), writeln(X), delete(RuleBase,play(_),NewRuleBase),nl_shell([play(X)|NewRuleBase]).
 do_it(LF, RuleBase) :- do_it(LF).
 
 do_it(trace('Off')) :- retractall(tracing(_)).
 do_it(trace(What))  :- assert(tracing(What)).
-
 do_it(define(X)) :- proper_noun(X,Unquoted_name), definition(Unquoted_name).
-
 do_it(X) :- !, write("Don't know how to "),write(X),nl.
 
 handle_logical_form(question(LF), RuleBase) :-
@@ -1111,16 +1138,16 @@ handle_logical_form(question(LF), RuleBase) :-
     trace_it('Prover', ('Handling ',LF,Clauses,'in',RuleBase)),
     prove(Clauses, RuleBase),
     trace_it('Prover', ('Handled ',LF,Clauses,'in',RuleBase)),
-    show_answer(Clauses).
+    show_answer(Clauses, english).
 
 handle_logical_form(question(LF), RuleBase) :-
     transform(LF, Clauses),
     write("I can't prove "),
-    show_answer(Clauses).
+    show_answer(Clauses, english).
 
 handle_logical_form(statement(LF), RuleBase) :-
     transform(LF, Clauses),
-    show_answer(Clauses),
+    show_answer(Clauses, english),
     trace_it('Prover', ('Adding',Clauses,' to ',RuleBase)),
     nl_shell([Clauses|RuleBase]).
 
@@ -1239,32 +1266,35 @@ check_for_missing_vocabulary_words2(Word) :-
  * Main parse entry point
 */
 
-parse :-
-    nl_shell([me('Alexa')]).
-
 nl_shell(RuleBase) :-
     write(':'),flush,
     input_to_atom_list(Input),
     headtail(Input, Root, Punctuation),
     get_time(T1),
-   ( Root == [q] -> halt;
-       ( % if
-            %s_type(Punctuation, S_type), write(S_type), write(': '), writeln(Root),
-            sentence(Logical_form, Parse_form, Root, []), !,
-            ( tracing('LogicalForm') -> write('Logical Form: '),writeln(Logical_form); true),
-            ( tracing('ParseForm')   -> write('Parse Form: '),pp(Parse_form,1),nl; true),
-            handle_logical_form(Logical_form, RuleBase),
-            get_time(T2),
-            Msec is (T2 - T1) * 1000,
-            format('~2f~w~n', [Msec,msec]),
-            nl_shell(RuleBase);
-         % else
-            get_time(T2),
-            Msec is (T2 - T1) * 1000,
-            format('~2f~w~n', [Msec,msec]),
-            write("Pardon?"),nl,
-            check_for_missing_vocabulary_words(Root),
-            nl_shell(RuleBase)
+    ( Root == [q] -> save_rules('nl2.db',RuleBase),!,halt;
+       ( % then
+            ( Root == [a] -> abort;
+            % if
+                sentence(Logical_form, Parse_form, Root, []), !,
+                ( tracing('LogicalForm') -> write('Logical Form: '),writeln(Logical_form); true),
+                ( tracing('ParseForm')   -> write('Parse Form: '),pp(Parse_form,1),nl; true),
+                handle_logical_form(Logical_form, RuleBase),
+                get_time(T2),
+                Msec is (T2 - T1) * 1000,
+                format('~2f~w~n', [Msec,msec]),
+                nl_shell(RuleBase);
+             % else
+                get_time(T2),
+                Msec is (T2 - T1) * 1000,
+                format('~2f~w~n', [Msec,msec]),
+                write("Pardon?"),nl,
+                check_for_missing_vocabulary_words(Root),
+                nl_shell(RuleBase)
+            )
         )
      ).
+
+prolog :-
+    read_rules('nl2.db',RuleBase),
+    nl_shell(RuleBase).
 
