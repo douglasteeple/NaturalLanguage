@@ -945,14 +945,13 @@ find_clause(C,(A:-B)) :-
 copy_term(C,CC),
 copy_term((A:-B),CCC),
     trace_it('Finder', ('find_clause binding ',CC,(A:-B))),
-    eq(CC,CCC),
+    (CC=CCC),
     trace_it('Finder', ('find_clause bound ',CC,A)).
 find_clause(C,CC) :-
     copy_term(C,CC),
     copy_term(C,CCC),
     CC=CCC,
     trace_it('Finder', ('find_clause term ',C,CC)).
-eq(X,X).
 
 transform((A,B),[(A:-true)|Rest]) :- !,
     transform(B,Rest).
@@ -974,11 +973,11 @@ transform(A,A) :- !.
  */
 
 % generate sentences
-show_answer([]).
+show_answer([], How).
 
-show_answer([H|T]) :-
-    show_answer(H),
-    show_answer(T).
+show_answer([H|T], How) :-
+    show_answer(H, How),
+    show_answer(T, How).
 
 show_answer(Clause, english) :- !,
     generate_nl(Clause),writeln('.').
@@ -989,8 +988,11 @@ show_answer(Clause, _) :-
 generate_nl([]).
 generate_nl(true).
 generate_nl([A|T]) :- !,
-    generate_nl(A),
+    copy_term(A,AA),
+    numbervars(AA),
+    write(AA),
     generate_nl(T).
+generate_nl([A]) :- generate_nl(A).
 generate_nl(A) :- atom(A), !,
     copy_term(A,AA),
     numbervars(AA),
