@@ -53,11 +53,11 @@ sentence(question(LF), question(does(VPhr,Object,Object2))) -->
     indirect_object(Y, Assn2, LF, Object2, Number1, Person1).
 
 % imperative
-sentence(imperative(LF), imperative(VPhr, Object)) -->
-    %preliminaries(Prelims),{trace_it('Grammar', (imperative__preliminaries,Prelims))},
-    verb_phrase(X, Assn, VPhr, singular, first, intransitive),{trace_it('Grammar', (imperative__verb_phrase,X, Assn, LF, VPhr, Number, Person))},
-    direct_object(X, Assn, LF, Object, Number1, Person1),{trace_it('Grammar', (imperative__direct_object,X, Assn,Object, LF, Number, Person))}.
- 
+sentence(imperative(LF), imperative(Prelims, VPhr, Object)) -->
+    preliminaries(X, LF, Prelims),{trace_it('Grammar', (imperative__preliminaries,X,Prelims,LF))},
+    verb_phrase(Y, Assn, VPhr, singular, first, intransitive),{trace_it('Grammar', (imperative__verb_phrase,Y, Assn, VPhr, singular, first))},
+    direct_object(Y, X, Assn, Object, Number1, Person1),{trace_it('Grammar', (imperative__direct_object,Y, Assn, Assn1, Object, LF, Number1, Person1))}.
+
 sentence(imperative(LF), imperative(VPhr, Object, Object2)) -->
     verb_phrase((X,Y), Assn, VPhr, singular, first, bitransitive),{trace_it('Grammar', (imperative__verb_phrase,X, Assn, LF, VPhr, Number, Person))},
     direct_object(X, Assn, Assn1, Object, Number1, Person1),{trace_it('Grammar', (imperative__direct_object,X, Assn,Object, LF, Number, Person))},
@@ -102,11 +102,9 @@ independent_clause(LF, exist(NPhr)) --> [there, is],
 independent_clause(LF, exist(NPhr)) --> [there, are],
     subject(X, Assn, LF, NPhr, plural, Person).
 
-preliminaries(Prelims1&Prelims) --> prelims(Prelims1), preliminaries(Prelims).
-preliminaries(Prelims) --> prelims(Prelims).
-prelims(none) --> [].
-prelims(please) --> [please].
-prelims('Alexa') --> ['Alexa'].
+preliminaries(X, please(X), prelim(please)) --> [please].
+preliminaries(X, please(X), prelim('Alexa')) --> ['Alexa'].
+preliminaries(_,_,_) --> [].
 
 % ------------------------------------------------------------------
 % subject of a sentence
@@ -959,6 +957,7 @@ transform(most(X,Y&Z),[((count(Y,CY)),(count(Z,CZ),(C is CY/CZ, C>0.8)))]).
 transform(few(X,Y&Z),[((count(Y,CY)),(count(Z,CZ),(C is CY/CZ, C<0.1)))]).
 transform(not(X,Y&Z),[((count(Y,CY)),(count(Z,CZ),(CY=0.0, CZ>0.0)))]).
 transform(A&B,(A,B)) :- !.
+transform(please(A),A) :- !.
 transform(A,A) :- !.
 
 /*
@@ -1183,7 +1182,7 @@ pp(X,0) :- writeln(X).
 pp(X,_) :- var(X).
 pp(X,NN) :- nonvar(X), functor(X, F, N), !, nspaces(NN), writeln(F), NN1 is NN + 1, nspaces(NN1), ppa(X,1,N,NN1).
 pp(X,NN) :- nspaces(NN), writeln(X).
-ppa(X,N,T,NN) :- N =< T, !, nspaces(NN), arg(N,X,A), pp(A,NN), N1 is N + 1, NN1 is NN + 1, ppa(X,N1,T,NN1).
+ppa(X,N,T,NN) :- N =< T, !, nspaces(NN), arg(N,X,A), pp(A,NN), N1 is N + 1, ppa(X,N1,T,NN).
 ppa(_,_,_,_).
 
 definitions([]) :- !.
