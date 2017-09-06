@@ -875,62 +875,63 @@ isadictword(PartOfSpeech,[Root,_,_,PartOfSpeech],Root).
  * Prover
  */
 
-prove(true,RB) :- !,
+prove(true,true,RB) :- !,
     trace_it('Prover', ('true',RB)),
     true.
 
-prove(A,[A]) :- !,
+prove(A,A,[A]) :- !,
     trace_it('Prover', ('Fact',A)),
     true.
 
-prove(A=A,_) :- !,
+prove(A=A,A,_) :- !,
     trace_it('Prover', ('equality',A)),
     true.
 
-prove((A,B),RB) :-
+prove((A,B),(AA,BB),RB) :-
     trace_it('Prover', ('Prove A,B',B,RB)),
-    prove(B,RB),
+    prove(B,BB,RB),
     trace_it('Prover', ('Prove',A,RB)),
-    prove(A,RB).
+    prove(A,AA,RB).
 
-prove(A,RB) :-
+prove(A,(A:-BB),RB) :-
     trace_it('Prover', ('Prove :-',A,RB)),
     find_clause((A:-B),RB),
     trace_it('Prover', ('Found',A,':-',B)),
-    prove(B,RB),
+    prove(B,BB,RB),
     trace_it('Prover', ('Proved',B,':-',B)).
 
-prove(A,RB) :-
+prove(A,A,RB) :-
     trace_it('Prover', ('Prove term',A,RB)),
     find_clause(A,RB),
     trace_it('Prover', ('Proved',A,'in',RB)).
 
-prove(who(A),RB) :-
+prove(who(A),CC,RB) :-
     trace_it('Prover', ('Prove who a',A,RB)),
     atom(A),
     find_clause(C,RB),
+    trace_it('Prover', ('Found root who ',C,RB)),
     functor(C, F, 1),
     C=..[F|[A]],
-    trace_it('Prover', ('Prove who2',C,RB)),
-    prove(C, RB),
-    trace_it('Prover', ('Proved who',C,'in',RB)).
+    trace_it('Prover', ('Prove who c',C,F,A,RB)),
+    prove(C, CC, RB),
+    trace_it('Prover', ('Proved who',CC,'in',RB)).
 
-prove(who(A),RB) :-
+prove(who(A),B,RB) :-
     trace_it('Prover', ('Prove who b',A,RB)),
     functor(A, W, 1),
-    prove(A,RB),
+    prove(A,B,RB),
     trace_it('Prover', ('Proved who',A,'in',RB)).
 
-prove(what(A),RB) :-
+prove(what(A),B,RB) :-
     trace_it('Prover', ('Prove what',A,RB)),
     functor(A, W, 1),
-    prove(A,RB),
+    prove(A,B,RB),
     trace_it('Prover', ('Proved what',A,'in',RB)).
 
-prove(who(A),RB) :- !, true.
-prove(what(A),RB) :- !, true.
+prove(who(A),A,RB) :- !, true.
+prove(what(A),A,RB) :- !, true.
 
-prove(_,_) :- !,fail.
+prove(_,_,_) :- !,fail.
 
 find_clause(_,[]) :- !, fail.
 find_clause(C,[Head|Tail]) :-
@@ -941,13 +942,12 @@ find_clause(C,[_|Tail]) :-
     find_clause(C,Tail).
 find_clause(C,(A:-B)) :-
     trace_it('Finder', ('finding_clause :- ',C,(A:-B))),
-copy_term(C,CC),
-copy_term((A:-B),CCC),
+    copy_term((A:-B),CC),
     trace_it('Finder', ('find_clause binding ',CC,(A:-B))),
-    (CC=CCC),
-    trace_it('Finder', ('find_clause bound ',CC,A)).
+    (C=CC),
+    trace_it('Finder', ('find_clause bound ',C,A)).
 find_clause(C,C) :-
-    trace_it('Finder', ('find_clause term ')).
+    trace_it('Finder', ('find_clause term ',C)).
 
 transform((A,B),[(A:-true)|Rest]) :- !,
     transform(B,Rest).
@@ -1134,9 +1134,9 @@ do_it(X) :- !, write("Don't know how to "),write(X),nl.
 handle_logical_form(question(LF), RuleBase) :-
     transform(LF, Clauses),
     trace_it('Prover', ('Handling ',LF,Clauses,'in',RuleBase)),
-    prove(Clauses, RuleBase),
-    trace_it('Prover', ('Handled ',LF,Clauses,'in',RuleBase)),
-    show_answer(Clauses, english).
+    prove(Clauses, Answers, RuleBase),
+    trace_it('Prover', ('Handled ',LF,Clauses,Answers,'in',RuleBase)),
+    show_answer(Answers, english).
 
 handle_logical_form(question(LF), RuleBase) :-
     transform(LF, Clauses),
