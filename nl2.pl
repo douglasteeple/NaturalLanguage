@@ -16,6 +16,7 @@
 :- ensure_loaded('pronto_morph_engine.pl').
 :- ensure_loaded('morph_lookup.pl').
 :- ensure_loaded('wn_g.pl').
+:- ensure_loaded('wiki.pl').
 
 :-style_check(-singleton).
 
@@ -164,23 +165,23 @@ predicate_2(X, Assn, VPhr, Number, Person) -->
  % sense verb -\-predicate nominative 
  % example: [I am a rabbit.]
  predicate_2(X, LF, pred(VPhr, pnom(PredNom)), Number, Person) -->
-    sense_verb_phrase(X, Assn, VPhr, Number, Person),{trace_it('Grammar', (predicate_2_sense_verb_phrase,X, Y, LF, Assn, Number, Person))},
+    sense_verb_phrase(X, Assn, VPhr, Number, Person),{trace_it('Grammar', (predicate_2_sense_verb_phrase,X, Assn, Number, Person))},
     pred_nominative(Y, Assn2, LF, PredNom, Number, Person),{trace_it('Grammar', (predicate_2a__pred_nominative,X, Y,Assn, LF, Assn2, Number, Person))}, {X=Y},{trace_it('Grammar', (xeqy__predicate_2b,X, Assn2, LF, Assn2, Number, Person))}.
 
 % sense verb -\- predicate adjective
 % example: [I am angry.]
 predicate_2(X, Assn1&Assn2, pred(VPhr, padj(Adj)), Number, Person) -->
-    sense_verb_phrase(X, Assn1, VPhr, Number, Person),
-    pred_adjective(X, Assn2, Adj).
+    sense_verb_phrase(X, Assn1, VPhr, Number, Person),{trace_it('Grammar', (predicate_2_sense_verb_phrase,X, LF, Assn1, Number, Person))},
+    pred_adjective(X, Assn2, Adj),{trace_it('Grammar', (predicate_2_sense_verb_phrase,X, LF, Assn1, Number, Person))}.
 
 % verb -\- direct object
 predicate_3(X, LF, *(VPhr, DirObj), Number, Person) -->
-    verb_phrase((X,Y), Assn, VPhr, Number1, Person1, transitive),
+    verb_phrase((X,Y), Assn, VPhr, Number1, Person1, transitive),{trace_it('Grammar', (predicate_2_sense_verb_phrase,X, Y, LF, Assn, Number, Person))},
     direct_object(Y, Assn, LF, DirObj, Number2, Person2).
 
 % verb -\- indirect object -\- direct object
 predicate_3(X, LF, *(VPhr, IndObj, DirObj), Number, Person) -->
-    verb_phrase((X,Y,Z), Assn1, VPhr, Number, Person, bitransitive),
+    verb_phrase((X,Y,Z), Assn1, VPhr, Number, Person, bitransitive),{trace_it('Grammar', (predicate_2_sense_verb_phrase,X, Y, LF, Assn, Number, Person))},
     indirect_object(Y, Assn1, Assn2, IndObj, Number2, Person2),
     direct_object(Z, Assn2, LF, DirObj, Number3, Person3).
  
@@ -663,6 +664,7 @@ averb(X,play(X),play, played, plays, playing, played, intransitive).
 averb(X,trace(X),trace, traced, traces, tracing, traced, intransitive).
 averb(X,define(X),define, defined, defines, defining, defined, intransitive).
 averb(X,save(X),save, saved, saves, saving, saved, intransitive).
+averb(X,wiki(X),wiki, wikied, wikies, wikiing, wikied, intransitive).
 averb((X,Y),fill(X,Y),fill, filled, fills, filling, filled, transitive).
 
 %averb((X,Y),LF, Root,V,_,_,_,transitive) :- atom(V), morphit(V,List,Out), check_list(v,List,Out,Num,Root), LF=..[Root,X,Y].
@@ -883,15 +885,16 @@ prove(A,A,[A]) :- !,
     trace_it('Prover', ('Fact',A)),
     true.
 
-prove(A=A,A,_) :- !,
-    trace_it('Prover', ('equality',A)),
+prove(A=A,A,RB) :- !,
+    trace_it('Prover', ('equality',A,RB)),
     true.
 
 prove((A,B),(AA,BB),RB) :-
     trace_it('Prover', ('Prove A,B',B,RB)),
     prove(B,BB,RB),
     trace_it('Prover', ('Prove',A,RB)),
-    prove(A,AA,RB).
+    prove(A,AA,RB),
+    trace_it('Prover', ('Proved',(AA,BB),'in',RB)).
 
 prove(A,(A:-BB),RB) :-
     trace_it('Prover', ('Prove :-',A,RB)),
@@ -1017,7 +1020,7 @@ generate_nl(i(A)) :- atom(A), !,
 generate_nl((A:-B)) :-
     trace_it('English', ('generate_nl b ',A)),
     generate_nl(A),
-    generate_nl(' if '),
+    (nonvar(A)->generate_nl(' as ');generate_nl(' if ')),
     trace_it('English', ('generate_nl c ',B)),
     generate_nl(B).
 
@@ -1128,6 +1131,7 @@ do_it(LF, RuleBase) :- do_it(LF).
 
 do_it(trace('Off')) :- retractall(tracing(_)).
 do_it(trace(What))  :- assert(tracing(What)).
+do_it(wiki(What))  :- proper_noun(What,Unquoted), wiki(Unquoted, Answer), writeln(Answer).
 do_it(define(X)) :- proper_noun(X,Unquoted_name), definition(Unquoted_name).
 do_it(X) :- !, write("Don't know how to "),write(X),nl.
 
@@ -1292,7 +1296,7 @@ nl_shell(RuleBase) :-
         )
      ).
 
-prolog :-
+hi :-
     read_rules('nl2.db',RuleBase),
     nl_shell(RuleBase).
 
