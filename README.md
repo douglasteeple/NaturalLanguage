@@ -4,9 +4,13 @@ A semantic-based NL in Prolog for a discourse-based interface to Alexa.
 
 So, I added an extensive DCG grammar by Gurney et al, based for the most part on Warren and Perriera, added some WORDnet dictionary and morphology interfaces, and added a nod to McCord for the Logical Form ideas.
 
-Came to a conclusion that 1) the grammar is very brittle 2) the semantic logical form is brittle 3) the onotology is brittle and that this apparoach is not what humans do at all.
+Came to a conclusion that 1) the grammar is very brittle 2) the semantic logical form is brittle 3) the ontology is brittle and that this approach is not what humans do at all.
 
-So, had the simple idea to add a command to query a word, get data from Wikipedia, try to parse it to add information to the prolog knowledge base. Hmmm... still working on this...
+So, had the simple idea to add a command to query a word, then get data about that word from Wikipedia, try to parse the information returned and grow the prolog knowledge base. 
+
+Hmmm... still working on this...
+
+try: wiki 'dinosaur'.
 
 # References
 
