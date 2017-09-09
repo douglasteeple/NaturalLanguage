@@ -10,7 +10,18 @@ So, had the simple idea to add a command to query a word, then get data about th
 
 Hmmm... still working on this...
 
-try: wiki 'dinosaur'.
+try: 
+
+'''
+John is a man.
+all men are mortal.
+is John mortal?
+who is mortal?
+John likes Mary.
+who does John like?
+what does 'dinosaur' mean?
+
+'''
 
 # References
 
