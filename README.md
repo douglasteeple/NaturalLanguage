@@ -59,6 +59,10 @@ save Rules.                 // saves the current RuleBase for reload on next sta
 
 ```
 
+# Next Steps
+
+Hmmm.. Perceptrons, Deep Learning... Neural Nets... TDB...
+
 # References
 
 Warren and Perriera: CHAT-80
