@@ -1162,7 +1162,8 @@ handle_logical_form(question(what(mean(X,_))), RuleBase) :-
     get_time(T1),
 (       string_input_to_atom_list(FirstAnswer, Input),
         headtail(Input, Root, Punctuation),
-        sentence(Logical_form, Parse_form, Root, []), !,
+        first_word_case(Root, Cased),
+        sentence(Logical_form, Parse_form, Cased, []), !,
         ( tracing('LogicalForm') -> write('Logical Form: '),writeln(Logical_form); true),
         ( tracing('ParseForm')   -> write('Parse Form: '),pp(Parse_form,1),nl; true),
         handle_logical_form(Logical_form, RuleBase),
@@ -1260,6 +1261,12 @@ unquote([H1|T], [H1|T2]) :- unquote(T,T2).
 trim_period([.],[]).
 trim_period([X|R],[X|T]) :- trim_period(R,T).
 
+case_it('John','John').
+case_it('Mary','Mary').
+case_it(X,Y) :- downcase_atom(X,Y).
+
+first_word_case([H|T], [C|T]) :- case_it(H, C).
+
 % pretty print parse form
 nspaces(N) :- N > 0, write(' '), N1 is N - 1, nspaces(N1).
 nspaces(_).
@@ -1334,7 +1341,8 @@ nl_shell(RuleBase) :-
        ( % then
             ( Root == [a] -> abort;
             % if
-                sentence(Logical_form, Parse_form, Root, []), !,
+                first_word_case(Root, Cased),
+                sentence(Logical_form, Parse_form, Cased, []), !,
                 ( tracing('LogicalForm') -> write('Logical Form: '),writeln(Logical_form); true),
                 ( tracing('ParseForm')   -> write('Parse Form: '),pp(Parse_form,1),nl; true),
                 handle_logical_form(Logical_form, RuleBase),
