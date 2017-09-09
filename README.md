@@ -12,7 +12,7 @@ Hmmm... still working on this...
 
 try: 
 
-'''
+```
 John is a man.
 all men are mortal.
 is John mortal?
@@ -21,7 +21,7 @@ John likes Mary.
 who does John like?
 what does 'dinosaur' mean?
 
-'''
+```
 
 # References
 
