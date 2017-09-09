@@ -21,22 +21,22 @@ John likes Mary.
 who does John like?
 what does 'dinosaur' mean?
 
-who who!
+woo hoo! There's a long drawn out disaster as the attempt at assimilating definition proceeds....
 
 ```
 
 There are some handy hooks:
 
 ```
-wiki 'kangaroo'.
-trace Prover.
-trace Finder.
-trace English.
-trace Logicalform'.
-trace Grammar.
-trace Off.
+wiki 'kangaroo'.            // show wiki entry for kangaroo
+trace Prover.               // shows the prover steps
+trace Finder.               // shows the database finder steps
+trace English.              // shows the NL generation steps
+trace Logicalform'.         // shows the Logical Form
+trace Grammar.              // traces all the grammar rules
+trace Off.                  // quiet!
 
-play The Beatles.           // Needs to gt hooked to Alex.
+play The Beatles.           // Needs to get hooked to Alex.
 show Rules.                 // shows the current RuleBase in English
 save Rules.                 // saves the current RuleBase for reload on next startup.
 
