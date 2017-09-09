@@ -10,7 +10,21 @@ So, had the simple idea to add a command to query a word, then get data about th
 
 Hmmm... still working on this...
 
-try: 
+## How to Run
+
+nl2.pl is a script that uses SWI Prolog on Mac OSX. To run it:
+
+```
+./nl2.pl
+```
+Then:
+```
+hi.
+```
+
+## Examples
+
+Try: 
 
 ```
 John is a man.
@@ -19,9 +33,10 @@ is John mortal?
 who is mortal?
 John likes Mary.
 who does John like?
+
 what does 'dinosaur' mean?
 
-woo hoo! There's a long drawn out disaster as the attempt at assimilating definition proceeds....
+woo hoo! There's a long drawn out disaster as the attempt at assimilating the wiki definition proceeds....
 
 ```
 
@@ -29,21 +44,26 @@ There are some handy hooks:
 
 ```
 wiki 'kangaroo'.            // show wiki entry for kangaroo
+
+trace Off.                  // quiet! Turn off all this debug information!
 trace Prover.               // shows the prover steps
 trace Finder.               // shows the database finder steps
 trace English.              // shows the NL generation steps
-trace Logicalform'.         // shows the Logical Form
 trace Grammar.              // traces all the grammar rules
+trace Logicalform.          // shows the Logical Form
 trace Parser.               // shows the parse tree
-trace Off.                  // quiet!
 
-play The Beatles.           // Needs to get hooked to Alex.
+play The Beatles.           // Needs to get hooked to Alexa.
 show Rules.                 // shows the current RuleBase in English
 save Rules.                 // saves the current RuleBase for reload on next startup.
 
 ```
 
 # References
+
+Warren and Perriera: CHAT-80
+
+Winograd: SHRDLU
 
 ProNTo = Prolog Natural Language Tools, Unversity of Georgia, http://ai1.ai.uga.edu/mc/pronto/
 
