@@ -21,6 +21,25 @@ John likes Mary.
 who does John like?
 what does 'dinosaur' mean?
 
+who who!
+
+```
+
+There are some handy hooks:
+
+```
+wiki 'kangaroo'.
+trace Prover.
+trace Finder.
+trace English.
+trace Logicalform'.
+trace Grammar.
+trace Off.
+
+play The Beatles.           // Needs to gt hooked to Alex.
+show Rules.                 // shows the current RuleBase in English
+save Rules.                 // saves the current RuleBase for reload on next startup.
+
 ```
 
 # References
