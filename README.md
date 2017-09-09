@@ -34,6 +34,7 @@ trace Finder.               // shows the database finder steps
 trace English.              // shows the NL generation steps
 trace Logicalform'.         // shows the Logical Form
 trace Grammar.              // traces all the grammar rules
+trace Parser.               // shows the parse tree
 trace Off.                  // quiet!
 
 play The Beatles.           // Needs to get hooked to Alex.
