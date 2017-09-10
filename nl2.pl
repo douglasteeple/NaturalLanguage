@@ -1136,14 +1136,14 @@ read_rules(FileName, RuleBase) :-
     exists_file(FileName),
     read_file_to_terms(FileName, RuleBase, []),
     show_rules(RuleBase).
-read_rules(_, _).
+read_rules(_, []).
 
 % execute the logical form
 
-do_it(show('Rules'), RuleBase) :- show_rules(RuleBase).
-do_it(save('Rules'), RuleBase) :- save_rules('nl2.db', RuleBase).
-do_it(play(X), RuleBase) :- write('Playing '), writeln(X), delete(RuleBase,play(_),NewRuleBase),nl_shell([play(X)|NewRuleBase]).
-do_it(LF, RuleBase) :- do_it(LF).
+do_it(show('Rules'), RuleBase, RuleBase) :- show_rules(RuleBase).
+do_it(save('Rules'), RuleBase, RuleBase) :- save_rules('nl2.db', RuleBase).
+do_it(play(X), RuleBase, NewRuleBase) :- write('Playing '), writeln(X), delete(RuleBase,play(_),ShortBase),append([play(X)],ShortBase,NewRuleBase).
+do_it(LF, RuleBase, RuleBase) :- do_it(LF).
 
 do_it(trace('Off')) :- retractall(tracing(_)).
 do_it(trace(What))  :- assert(tracing(What)).
@@ -1152,100 +1152,58 @@ do_it(define(X)) :- proper_noun(X,Unquoted_name), definition(Unquoted_name).
 do_it(X) :- !, write("Don't know how to "),write(X),nl.
 
 % handle wiki
-handle_logical_form(question(what(mean(X,_))), RuleBase) :-
+handle_logical_form(question(what(mean(X,_))), RuleBase, NewRuleBase) :-
     transform(what(mean(X,_)), Clauses),
     trace_it('Prover', ('Handling ',LF,Clauses,'in',RuleBase)),
     prove(Clauses, Answers, RuleBase),
     trace_it('Prover', ('Handled ',LF,Clauses,Answers,'in',RuleBase)),
     head(Answers,FirstAnswer),
     writeln(FirstAnswer),
-    get_time(T1),
-(       string_input_to_atom_list(FirstAnswer, Input),
-        headtail(Input, Root, Punctuation),
-        first_word_case(Root, Cased),
-        sentence(Logical_form, Parse_form, Cased, []), !,
-        ( tracing('LogicalForm') -> write('Logical Form: '),writeln(Logical_form); true),
-        ( tracing('ParseForm')   -> write('Parse Form: '),pp(Parse_form,1),nl; true),
-        handle_logical_form(Logical_form, RuleBase),
-        get_time(T2),
-        Msec is (T2 - T1) * 1000,
-        format('~2f~w~n', [Msec,msec]),
-        nl_shell(RuleBase);
-     % else
-        get_time(T2),
-        Msec is (T2 - T1) * 1000,
-        format('~2f~w~n', [Msec,msec]),
-        write("I was unable to assimilate that definition."),nl,
-        check_for_missing_vocabulary_words(Root),
-        nl_shell(RuleBase)
-    ).
+    string_input_to_atom_list(FirstAnswer, S),
+    parse(S, RuleBase, NewRuleBase).
 
-
-
-handle_logical_form(question(LF), RuleBase) :-
+handle_logical_form(question(LF), RuleBase, RuleBase) :-
     transform(LF, Clauses),
     trace_it('Prover', ('Handling ',LF,Clauses,'in',RuleBase)),
     prove(Clauses, Answers, RuleBase),
     trace_it('Prover', ('Handled ',LF,Clauses,Answers,'in',RuleBase)),
     show_answer(Answers, english).
 
-handle_logical_form(question(LF), RuleBase) :-
+handle_logical_form(question(LF), RuleBase, RuleBase) :-
     transform(LF, Clauses),
     write("I can't prove "),
     show_answer(Clauses, english).
 
-handle_logical_form(statement(LF), RuleBase) :-
+handle_logical_form(statement(LF), RuleBase, NewRuleBase) :-
     transform(LF, Clauses),
     show_answer(Clauses, english),
     trace_it('Prover', ('Adding',Clauses,' to ',RuleBase)),
-    nl_shell([Clauses|RuleBase]).
+    append([Clauses],RuleBase,NewRuleBase),
+    trace_it('Prover', ('The RuleBase is now:',NewRuleBase)).
 
-handle_logical_form(imperative(LF), RuleBase) :-
+handle_logical_form(imperative(LF), RuleBase, NewRuleBase) :-
     transform(LF, Clauses),
-    do_it(Clauses, RuleBase),!.
+    do_it(Clauses, RuleBase, NewRuleBase),!.
 
 /*
  * Support stuff
  */
 
-last_input(q).
-    
 user_input_to_atom_list(L) :-
     read_line_to_codes(user_input, Input),
-    string_to_atom(Input,IA),
-    ( IA == '!' -> last_input(L);
-        tail_not_mark(IA, R, T),
-        atomic_list_concat(XL, ',', R),
-        maplist(split_atom(' '), XL, S),
-        append(S, [T], L),
-        asserta(last_input(L))
-     ).
+    string_input_to_atom_list(Input,L).
+
+atom_stringlist([[]], []).
+atom_stringlist([], []).
+atom_stringlist([H|T], [A|AT]) :- atom_string(A,H), atom_stringlist(T, AT).
+
+split_atoms([], []).
+split_atoms([H|T], [LHA|LT]) :- split_string(H, " ", " ", LH), atom_stringlist(LH, LHA), split_atoms(T, LT).
 
 string_input_to_atom_list(Input,L) :-
     string_to_atom(Input,IA),
-    ( IA == '!' -> last_input(L);
-        tail_not_mark(IA, R, T),
-        atomic_list_concat(XL, ',', R),
-        maplist(split_atom(' '), XL, S),
-        append(S, [T], L),
-        asserta(last_input(L))
-     ).
-
-is_terminal_punc(.).
-is_terminal_punc(?).
-is_terminal_punc(!).
-
-s_type([.],statement) :- !.
-s_type([?],question) :- !.
-s_type([!],imperative) :- !.
-s_type(X,X) :- !.
-
-split_atom(S, A, L) :- atomic_list_concat(XL, S, A), delete(XL, '', L).
-
-% if tale is ? or ! or . then remove
-% A:Atom, R:Removed, T:special mark
-tail_not_mark(A, R, T) :- atom_concat(R, T, A), is_terminal_punc(T),!.
-tail_not_mark(A, R, '') :- A = R.
+    split_string(IA, ",.!?", ",.!?", Ls),
+    split_atoms(Ls,L).
 
 headtail([H|T], H, T).
 tail([_|T], T).
@@ -1257,9 +1215,6 @@ capitalize([H1|T], [H2|T]) :- code_type(H2, to_upper(H1)).
 unquote([], []).
 unquote([H1|T], T2) :- char_type(H1,quote), unquote(T,T2).
 unquote([H1|T], [H1|T2]) :- unquote(T,T2).
-
-trim_period([.],[]).
-trim_period([X|R],[X|T]) :- trim_period(R,T).
 
 case_it('John','John').
 case_it('Mary','Mary').
@@ -1332,34 +1287,42 @@ check_for_missing_vocabulary_words2(Word) :-
  * Main parse entry point
 */
 
-nl_shell(RuleBase) :-
-    write(':'),flush,
-    user_input_to_atom_list(Input),
-    headtail(Input, Root, Punctuation),
+parse([], RuleBase, RuleBase).
+parse([S|P], RuleBase, ReallyNewRuleBase) :-
+    parse2(S, RuleBase, NewRuleBase),
+    parse(P, NewRuleBase, ReallyNewRuleBase).
+
+parse2([], RuleBase, RuleBase) :- write(parse2a),write((S,RuleBase)),writeln(done).
+parse2(S, RuleBase, NewRuleBase) :-
     get_time(T1),
-    ( Root == [q] -> save_rules('nl2.db',RuleBase),!,halt;
+    ( S == [q] -> save_rules('nl2.db',RuleBase),!,halt;
        ( % then
-            ( Root == [a] -> abort;
+            ( S == [a] -> abort;
             % if
-                first_word_case(Root, Cased),
+                first_word_case(S, Cased),
                 sentence(Logical_form, Parse_form, Cased, []), !,
-                ( tracing('LogicalForm') -> write('Logical Form: '),writeln(Logical_form); true),
-                ( tracing('ParseForm')   -> write('Parse Form: '),pp(Parse_form,1),nl; true),
-                handle_logical_form(Logical_form, RuleBase),
+                ( tracing('LogicalForm') -> write('Logical Form: '), writeln(Logical_form); true),
+                ( tracing('ParseForm')   -> write('Parse Form: '),   pp(Parse_form,1), nl ; true),
+                handle_logical_form(Logical_form, RuleBase, NewRuleBase),
                 get_time(T2),
                 Msec is (T2 - T1) * 1000,
-                format('~2f~w~n', [Msec,msec]),
-                nl_shell(RuleBase);
+                format('~2f~w~n', [Msec,msec])
+                ;
              % else
                 get_time(T2),
                 Msec is (T2 - T1) * 1000,
                 format('~2f~w~n', [Msec,msec]),
                 write("Pardon?"),nl,
-                check_for_missing_vocabulary_words(Root),
-                nl_shell(RuleBase)
+                check_for_missing_vocabulary_words(Root)
             )
         )
      ).
+
+nl_shell(RuleBase) :-
+    write(':'),flush,
+    user_input_to_atom_list(Input),
+    parse(Input, RuleBase, NewRuleBase),
+    nl_shell(NewRuleBase).
 
 hi :-
     read_rules('nl2.db',RuleBase),
